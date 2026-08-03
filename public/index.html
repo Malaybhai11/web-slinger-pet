@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WEBSLINGER — a tiny web pet</title>
+    <meta name="description" content="A pocket-sized pixel hero that lives on your page and shoots webs at your buttons." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23050505'/%3E%3Crect x='4' y='3' width='8' height='7' fill='%23E63A3E'/%3E%3Crect x='5' y='5' width='3' height='2' fill='%23F2F6FF'/%3E%3Crect x='9' y='5' width='3' height='2' fill='%23F2F6FF'/%3E%3Crect x='5' y='10' width='6' height='4' fill='%232F5FB3'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <nav class="nav">
+      <span class="brand" data-web-target>web<span class="accent">slinger</span>.pet</span>
+      <div class="nav-links">
+        <a href="#features" data-web-target>features</a>
+        <a href="https://github.com/Malaybhai11/web-slinger-pet" data-web-target>github</a>
+      </div>
+    </nav>
+
+    <main>
+      <section class="hero">
+        <p class="kicker">// a tiny desktop pet for the web</p>
+        <h1 id="hero-title" data-web-target>WEBSLINGER</h1>
+        <p class="sub">
+          A pocket-sized pixel hero that lives on your landing page, shoots webs
+          at your buttons, and swings around when it gets bored. Hover a button —
+          it can&rsquo;t resist.
+        </p>
+        <div class="cta">
+          <button class="btn primary" data-web-target>Get started</button>
+          <button class="btn ghost" data-web-target data-swing-trigger>Watch it swing</button>
+        </div>
+        <p class="hint">psst — move your cursor over a button ↑</p>
+      </section>
+
+      <section class="features" id="features">
+        <article class="card">
+          <h2>zero deps</h2>
+          <p>Pure TypeScript + one canvas. No frameworks, no images — the whole hero is drawn pixel by pixel at runtime.</p>
+          <a class="card-link" href="https://github.com/Malaybhai11/web-slinger-pet" data-web-target>read the source →</a>
+        </article>
+        <article class="card">
+          <h2>real physics</h2>
+          <p>Verlet-integrated web ropes, pendulum swings, squash &amp; stretch landings. It moves like it means it.</p>
+          <a class="card-link" href="#features" data-web-target>see it swing →</a>
+        </article>
+        <article class="card">
+          <h2>drop-in</h2>
+          <p>One script tag, one <code>data-web-target</code> attribute on anything clickable. Your page just got a pet.</p>
+          <a class="card-link" href="#features" data-web-target>adopt it →</a>
+        </article>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>thwip thwip · built with too much love by <span class="accent">Bhuro</span> 🥸 for malay</span>
+    </footer>
+
+    <script type="module" src="/js/main.js"></script>
+  </body>
+</html>

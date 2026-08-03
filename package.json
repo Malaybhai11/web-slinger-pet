@@ -1,0 +1,25 @@
+{
+  "name": "web-slinger-pet",
+  "version": "1.0.0",
+  "description": "A tiny pixel-art web-slinging pet that lives on your landing page and shoots webs at your buttons.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsc -p tsconfig.json && node server.mjs",
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "preview": "node server.mjs",
+    "qa": "node qa/shoot.mjs"
+  },
+  "keywords": [
+    "pixel-art",
+    "canvas",
+    "web-pet",
+    "landing-page",
+    "typescript",
+    "zero-dependencies"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
