@@ -1,383 +1,700 @@
 /**
- * spidey.ts — the pet's brain. A tiny state machine that idles, walks,
- * shoots webs at [data-web-target] elements, swings from the ceiling,
- * and generally acts playful.
+ * spidey.ts — Full 2D Web Physics Engine & State Machine for Spider-Man.
+ *
+ * POSITIONAL AUTHORITY MODES
+ * --------------------------
+ * 1. ON_SURFACE : DOM surface geometry is authoritative.
+ *                 Spider-Man's feet lock to surface.worldY, worldX = surface.worldX + width * offset.
+ *                 Moves automatically with scroll, layout shifts, and element movement.
+ * 2. AIRBORNE   : Physics Engine is authoritative (Euler integration + gravity + drag + swept AABB).
+ * 3. SWINGING   : Verlet Rope pendulum constraint is authoritative. Preserves tangent velocity on release.
+ * 4. CLINGING   : Wall surface is authoritative with surface normals.
  */
 
-import { drawSprite, SPRITE_W, SPRITE_H, type PoseName } from './sprite.js';
+import { drawSprite, getHandPosition, DISPLAY_SCALE, type PoseName } from './sprite.js';
 import { Rope } from './rope.js';
+import { AnimationPlayer } from './animations.js';
+import { SurfaceManager, type Surface } from './surfaces.js';
+import {
+  PhysicsEngine,
+  PhysicsBody,
+  PHYS_CONFIG,
+  type AuthorityMode,
+} from './physics.js';
+import {
+  emit, updateParticles, drawParticles,
+  triggerShake, applyShake,
+  drawShadow, drawDebugOverlay,
+} from './effects.js';
 
-const SCALE = 3;
-const GRAVITY = 0.55;
+const SCALE = DISPLAY_SCALE;
 
-type State = 'idle' | 'walk' | 'aim' | 'shoot' | 'leap' | 'swing' | 'hang' | 'wave';
-
-interface WebShot {
-  x0: number;
-  y0: number;
-  x1: number;
-  y1: number;
-  t: number; // 0..1 progress of the line extending
-  hold: number;
-}
-
-interface TargetInfo {
-  el: Element;
-  cx: number;
-  cy: number;
-  hoverT: number; // ms the cursor has lingered
-}
+export type SpideyState =
+  | 'SITTING'
+  | 'STANDING'
+  | 'CROUCHING'
+  | 'WALKING'
+  | 'CRAWLING'
+  | 'CLINGING'
+  | 'CEILING'
+  | 'HANGING'
+  | 'WEB_SHOOT'
+  | 'SWINGING'
+  | 'RELEASING'
+  | 'BACKFLIP'
+  | 'JUMPING'
+  | 'AIRBORNE'
+  | 'FALLING'
+  | 'LANDING'
+  | 'HARD_LANDING'
+  | 'DIZZY'
+  | 'RECOVERING'
+  | 'WAVING'
+  | 'STRETCHING';
 
 export class WebSlingerPet {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
-  private state: State = 'idle';
-  private stateT = 0;
 
-  // position = feet anchor on ground, or swing hand when hanging
-  private x = 120;
-  private y = 0;
-  private vx = 0;
-  private vy = 0;
-  private facing: 1 | -1 = 1;
-
-  private mouseX = -999;
-  private mouseY = -999;
-
-  private rope: Rope | null = null;
-  private shot: WebShot | null = null;
-  private blinkT = 0;
-  private nextBlink = 2400;
-  private squash = 1;
-
-  private walkDir: 1 | -1 = 1;
-  private idleUntil = 0;
-  private boredAt = 0;
-
-  private lastTs = 0;
+  private animFrameId: number | null = null;
   private destroyed = false;
 
+  // Core Physics Body
+  private body: PhysicsBody = {
+    worldX: 400,
+    worldY: 400,
+    prevWorldX: 400,
+    prevWorldY: 400,
+    vx: 0,
+    vy: 0,
+    rotation: 0,
+    angularVelocity: 0,
+    grounded: false,
+    supported: false,
+    currentSurface: null,
+    surfaceOffsetX: 0.5,
+    authority: 'AIRBORNE',
+  };
+
+  private physics = new PhysicsEngine();
+  private surfaces = new SurfaceManager();
+  private anim = new AnimationPlayer();
+
+  private state: SpideyState = 'FALLING';
+  private stateT = 0;
+  private facing: 1 | -1 = 1;
+
+  // Swing / Traversal
+  private rope: Rope | null = null;
+  private anchorWorldX = 0;
+  private anchorWorldY = 0;
+  private swingTargetSurface: Surface | null = null;
+  private swingTargetWorldX = 0;
+  private swingTargetWorldY = 0;
+
+  // Fall tracking
+  private fallStartWorldY = 0;
+  private fallDist = 0;
+
+  // Visuals & Spider-Sense
+  private squash = 1;
+  private dizzyAngle = 0;
+  private mouseX = -999;
+  private mouseY = -999;
+  private spiderSenseT = 0; // Spider-sense spark timer
+
+  // Timers & FPS
+  private lastTs = 0;
+  private lastInteractTs = -3000;
+  private nextIdleDecisionTs = 0;
+  private fps = 60;
+  private frameCount = 0;
+  private fpsTimer = 0;
+
   constructor() {
+    if ((window as any).__petInstance) {
+      (window as any).__petInstance.destroy();
+    }
+    (window as any).__petInstance = this;
+
     this.canvas = document.createElement('canvas');
     this.canvas.id = 'web-slinger-canvas';
+    this.canvas.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;';
     document.body.appendChild(this.canvas);
+
     this.ctx = this.canvas.getContext('2d')!;
     this.ctx.imageSmoothingEnabled = false;
 
     this.resize();
-    this.y = this.groundY();
-    this.x = Math.max(60, window.innerWidth * 0.22);
-    this.boredAt = performance.now() + 6000;
+    window.addEventListener('resize', this.onResize, { passive: true });
+    window.addEventListener('mousemove', this.onMouseMove, { passive: true });
+    window.addEventListener('pointermove', this.onMouseMove as EventListener, { passive: true });
+    window.addEventListener('keydown', this.onKeyDown);
 
-    window.addEventListener('resize', this.resize);
-    window.addEventListener('mousemove', this.onMove);
-    requestAnimationFrame(this.tick);
+    requestAnimationFrame(() => {
+      this.surfaces.scan();
+      this.initSpawn();
+      this.startLoop();
+    });
+  }
+
+  private startLoop(): void {
+    if (this.animFrameId !== null) cancelAnimationFrame(this.animFrameId);
+    this.lastTs = performance.now();
+    this.animFrameId = requestAnimationFrame(this.tick);
+  }
+
+  private initSpawn(): void {
+    const spawn = this.surfaces.findSpawnSurface();
+    if (spawn) {
+      this.landOnSurface(spawn, 0.5);
+      this.enterState('SITTING');
+    } else {
+      this.body.worldX = window.innerWidth * 0.5;
+      this.body.worldY = window.scrollY + 80;
+      this.enterState('FALLING');
+    }
+  }
+
+  // ── Keyboard Controls ──────────────────────────────────────────────────────
+
+  private onKeyDown = (e: KeyboardEvent): void => {
+    // Ignore input inside text fields
+    const target = e.target as HTMLElement;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+      return;
+    }
+
+    switch (e.code) {
+      case 'Space':
+        e.preventDefault();
+        this.triggerSpiderSense();
+        this.performAction('backflip');
+        break;
+      case 'KeyA':
+      case 'ArrowLeft':
+        this.facing = -1;
+        if (this.body.authority === 'ON_SURFACE') this.enterState('CRAWLING');
+        break;
+      case 'KeyD':
+      case 'ArrowRight':
+        this.facing = 1;
+        if (this.body.authority === 'ON_SURFACE') this.enterState('CRAWLING');
+        break;
+      case 'KeyW':
+      case 'ArrowUp':
+        this.performAction('webZip');
+        break;
+      case 'KeyG':
+        // Toggle Debug overlay
+        (window as any).SPIDEY_DEBUG = !(window as any).SPIDEY_DEBUG;
+        break;
+    }
+  };
+
+  /** Trigger Spider-Sense electric spark */
+  triggerSpiderSense(): void {
+    this.spiderSenseT = 600;
+  }
+
+  /** Direct Interaction: Click Target Element */
+  reactToInteraction(el: HTMLElement): void {
+    // Direct click on Spider-Man himself!
+    const sx = this.screenX();
+    const sy = this.screenY();
+    if (Math.abs(this.mouseX - sx) < 40 && Math.abs(this.mouseY - sy) < 60) {
+      this.triggerSpiderSense();
+      this.performAction('backflip');
+      return;
+    }
+
+    const now = performance.now();
+    if (now - this.lastInteractTs < 1600) return;
+    this.lastInteractTs = now;
+
+    this.triggerSpiderSense();
+    this.surfaces.updateRects();
+    const target = this.surfaces.getSurfaceFromElement(el);
+    if (!target) return;
+
+    if (target === this.body.currentSurface) {
+      this.anim.play('sitFidget');
+      return;
+    }
+
+    this.swingTargetSurface = target;
+    this.swingTargetWorldX  = this.surfaces.centerX(target);
+    this.swingTargetWorldY  = target.worldY;
+    this.facing = this.swingTargetWorldX >= this.body.worldX ? 1 : -1;
+
+    if (this.body.authority === 'ON_SURFACE') {
+      this.enterState('BACKFLIP');
+    } else if (this.state === 'SWINGING') {
+      this.swingTargetSurface = target;
+      this.swingTargetWorldX  = this.surfaces.centerX(target);
+      this.swingTargetWorldY  = target.worldY;
+    }
+  }
+
+  performAction(action: string): void {
+    const sx = this.screenX();
+    const sy = this.screenY();
+
+    switch (action) {
+      case 'swing':
+        this.swingRandom();
+        break;
+      case 'backflip':
+        this.detachSurface();
+        this.body.vy = PHYS_CONFIG.backflipImpulseY;
+        this.body.vx = this.facing * 3.5;
+        this.enterState('BACKFLIP');
+        emit(8, { x: sx, y: sy, vxRange: 0.2, vyRange: 0.2, color: '#E52521', life: 400 });
+        break;
+      case 'webZip':
+        this.detachSurface();
+        this.body.vy = -6;
+        this.body.vx = this.facing * 7.5;
+        this.enterState('AIRBORNE');
+        this.anim.play('webZip');
+        emit(10, { x: sx, y: sy, vxRange: 0.2, vyRange: 0.2, color: '#FFFFFF', life: 300 });
+        break;
+      case 'attack':
+        this.detachSurface();
+        this.body.vx = this.facing * 4.5;
+        this.enterState('AIRBORNE');
+        this.anim.play('attack');
+        emit(10, { x: sx, y: sy, vxRange: 0.2, vyRange: 0.1, color: '#E52521', life: 300 });
+        triggerShake(3);
+        break;
+      case 'roll':
+        this.detachSurface();
+        this.body.vx = this.facing * 5.5;
+        this.enterState('AIRBORNE');
+        this.anim.play('roll');
+        break;
+      case 'dizzy':
+        this.detachSurface();
+        this.enterState('DIZZY');
+        break;
+      case 'victory':
+        if (this.body.authority === 'ON_SURFACE') {
+          this.enterState('WAVING');
+        }
+        break;
+    }
+  }
+
+  private swingRandom(): void {
+    const ax = Math.min(window.innerWidth - 60, Math.max(60, this.body.worldX + this.facing * 200));
+    const ay = Math.max(0, this.body.worldY - 120);
+    this.swingTargetWorldX  = ax;
+    this.swingTargetWorldY  = ay;
+    this.swingTargetSurface = null;
+    this.lastInteractTs = -3000;
+    if (this.body.authority === 'ON_SURFACE') this.enterState('BACKFLIP');
   }
 
   destroy(): void {
     this.destroyed = true;
-    window.removeEventListener('resize', this.resize);
-    window.removeEventListener('mousemove', this.onMove);
+    if (this.animFrameId !== null) cancelAnimationFrame(this.animFrameId);
+    window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('mousemove', this.onMouseMove);
+    window.removeEventListener('pointermove', this.onMouseMove as EventListener);
+    window.removeEventListener('keydown', this.onKeyDown);
+    this.surfaces.destroy();
     this.canvas.remove();
   }
 
-  private resize = (): void => {
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-    this.ctx.imageSmoothingEnabled = false;
-    if (this.isGrounded()) this.y = this.groundY();
-  };
+  private screenX(): number { return this.body.worldX; }
+  private screenY(): number { return this.body.worldY - window.scrollY; }
 
-  private onMove = (e: MouseEvent): void => {
-    this.mouseX = e.clientX;
-    this.mouseY = e.clientY;
-  };
-
-  private groundY(): number {
-    return window.innerHeight - 14;
+  private detachSurface(): void {
+    this.body.currentSurface = null;
+    this.body.supported      = false;
+    this.body.grounded       = false;
+    this.body.authority      = 'AIRBORNE';
   }
 
-  private isGrounded(): boolean {
-    return this.state === 'idle' || this.state === 'walk' || this.state === 'aim' || this.state === 'shoot' || this.state === 'wave';
+  private landOnSurface(s: Surface, offsetX: number): void {
+    this.body.currentSurface  = s;
+    this.body.surfaceOffsetX  = Math.max(0.05, Math.min(0.95, offsetX));
+    this.body.worldX          = s.worldX + s.width * this.body.surfaceOffsetX;
+    this.body.worldY          = s.worldY;
+    this.body.supported       = true;
+    this.body.grounded        = true;
+    this.body.authority       = 'ON_SURFACE';
+
+    // Highlight target element with webbed glow
+    if (s.el) {
+      s.el.classList.add('webbed');
+      setTimeout(() => s.el?.classList.remove('webbed'), 1200);
+    }
   }
 
-  /** find interactive elements the pet cares about */
-  private targets(): TargetInfo[] {
-    const out: TargetInfo[] = [];
-    document.querySelectorAll('[data-web-target]').forEach((el) => {
-      const r = el.getBoundingClientRect();
-      if (r.width === 0 || r.height === 0) return;
-      const cx = r.left + r.width / 2;
-      const cy = r.top + r.height / 2;
-      const inCursor =
-        this.mouseX >= r.left - 12 &&
-        this.mouseX <= r.right + 12 &&
-        this.mouseY >= r.top - 12 &&
-        this.mouseY <= r.bottom + 12;
-      out.push({ el, cx, cy, hoverT: inCursor ? 1 : 0 });
-    });
-    return out;
+  private enterState(nextState: SpideyState): void {
+    this.state  = nextState;
+    this.stateT = 0;
+
+    switch (nextState) {
+      case 'SITTING':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('sit');
+        this.squash = 1;
+        this.nextIdleDecisionTs = performance.now() + 6000 + Math.random() * 5000;
+        break;
+
+      case 'CRAWLING':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play(this.facing > 0 ? 'crawlRight' : 'crawlLeft');
+        break;
+
+      case 'BACKFLIP':
+        this.detachSurface();
+        this.anim.play('backflip');
+        this.body.vy = PHYS_CONFIG.backflipImpulseY;
+        const dx = this.swingTargetWorldX - this.body.worldX;
+        this.body.vx = (dx >= 0 ? 1 : -1) * Math.min(5.5, Math.max(1.5, Math.abs(dx) * 0.007));
+        this.fallStartWorldY = this.body.worldY;
+        triggerShake(2);
+        break;
+
+      case 'SWINGING':
+        this.body.authority = 'SWINGING';
+        this.anim.play('swing');
+        this.initRope();
+        break;
+
+      case 'RELEASING':
+        this.body.authority = 'AIRBORNE';
+        if (this.rope) {
+          const vel = this.rope.endVel();
+          this.body.vx = vel.x;
+          this.body.vy = vel.y;
+        }
+        this.rope = null;
+        this.anim.play('fall');
+        break;
+
+      case 'FALLING':
+        this.detachSurface();
+        this.anim.play('fall');
+        this.fallStartWorldY = this.body.worldY;
+        break;
+
+      case 'LANDING':
+      case 'HARD_LANDING':
+        const hard = nextState === 'HARD_LANDING';
+        this.squash = hard ? 0.35 : 0.60;
+        this.anim.play('land');
+        const sx = this.screenX();
+        const sy = this.screenY();
+        if (hard) {
+          triggerShake(7, 0.85);
+          emit(18, { x: sx, y: sy, vx: 0, vy: -0.05, vxRange: 0.3, vyRange: 0.2, life: 600, color: '#FFFFFF' });
+        } else {
+          triggerShake(3, 0.88);
+          emit(8,  { x: sx, y: sy, vx: 0, vy: -0.04, vxRange: 0.2, vyRange: 0.1, life: 350, color: '#FFFFFF' });
+        }
+        break;
+
+      case 'DIZZY':
+        this.body.authority = 'AIRBORNE';
+        this.body.vx = this.body.vy = 0;
+        this.anim.play('dizzy');
+        triggerShake(6, 0.82);
+        break;
+
+      case 'RECOVERING':
+        this.anim.play('idle');
+        break;
+
+      case 'CLINGING':
+        this.body.authority = 'CLINGING';
+        this.anim.play('cling');
+        break;
+
+      case 'WAVING':
+        this.anim.play('wave');
+        break;
+
+      case 'STRETCHING':
+        this.anim.play('stretch');
+        break;
+    }
   }
 
-  private handX(): number {
-    return this.x + this.facing * 14;
-  }
-  private handY(): number {
-    return this.y - SPRITE_H * SCALE * 0.55;
+  private initRope(): void {
+    const midX = (this.body.worldX + this.swingTargetWorldX) / 2 + (Math.random() - 0.5) * 50;
+    const topY = Math.min(this.body.worldY, this.swingTargetWorldY);
+    this.anchorWorldX = midX;
+    this.anchorWorldY = Math.max(window.scrollY + 20, topY - 140 - Math.random() * 60);
+
+    const segs   = 12;
+    const dist   = Math.hypot(this.body.worldX - this.anchorWorldX, this.body.worldY - this.anchorWorldY);
+    const segLen = Math.max(10, dist / segs);
+
+    const anchorSy = this.anchorWorldY - window.scrollY;
+    this.rope = new Rope(this.anchorWorldX, anchorSy, segs, segLen);
+
+    const e  = this.rope.end();
+    const oX = this.screenX() - e.x;
+    const oY = this.screenY() - e.y;
+    for (const p of this.rope.points) { p.x += oX; p.y += oY; p.px += oX; p.py += oY; }
+
+    this.rope.kick(this.body.vx, this.body.vy);
+    emit(10, { x: this.screenX(), y: this.screenY() - 16, vxRange: 0.1, vyRange: 0.1, life: 260, color: '#FFFFFF' });
   }
 
   private tick = (ts: number): void => {
     if (this.destroyed) return;
-    const dt = Math.min(50, ts - (this.lastTs || ts));
+
+    const dtMs  = Math.min(50, ts - (this.lastTs || ts));
     this.lastTs = ts;
-    this.stateT += dt;
+    this.stateT += dtMs;
 
-    this.update(dt, ts);
-    this.render(ts);
+    if (this.spiderSenseT > 0) this.spiderSenseT -= dtMs;
 
-    requestAnimationFrame(this.tick);
+    this.frameCount++;
+    this.fpsTimer += dtMs;
+    if (this.fpsTimer >= 1000) {
+      this.fps = Math.round((this.frameCount * 1000) / this.fpsTimer);
+      this.frameCount = 0;
+      this.fpsTimer = 0;
+    }
+
+    const { alpha } = this.physics.update(this.body, dtMs, this.surfaces, (dtSec) => {
+      this.physicsStep(dtSec);
+    });
+
+    this.updateStateLogic(dtMs, ts);
+    this.render(alpha);
+
+    this.animFrameId = requestAnimationFrame(this.tick);
   };
 
-  // ------------------------------------------------ state machine
-  private update(dt: number, ts: number): void {
-    const t = this.targets();
-    const hovered = t.find((i) => i.hoverT > 0);
+  private physicsStep(dtSec: number): void {
+    this.surfaces.updateRects();
 
-    switch (this.state) {
-      case 'idle': {
-        this.squash += (1 - this.squash) * 0.2;
-        if (hovered) {
-          this.enterAim(hovered, ts);
-        } else if (ts > this.boredAt) {
-          this.swing();
-        } else if (ts > this.idleUntil) {
-          this.walkDir = Math.random() < 0.5 ? -1 : 1;
-          this.facing = this.walkDir;
-          this.state = 'walk';
-          this.stateT = 0;
-        }
-        break;
-      }
-      case 'walk': {
-        this.x += this.walkDir * 0.09 * dt;
-        const margin = 40;
-        if (this.x < margin) { this.x = margin; this.walkDir = 1; }
-        if (this.x > window.innerWidth - margin) { this.x = window.innerWidth - margin; this.walkDir = -1; }
-        this.facing = this.walkDir;
-        if (hovered) {
-          this.enterAim(hovered, ts);
-        } else if (this.stateT > 2600) {
-          this.state = 'idle';
-          this.stateT = 0;
-          this.idleUntil = ts + 1200 + Math.random() * 2600;
-        }
-        break;
-      }
-      case 'aim': {
-        if (!hovered) {
-          this.state = 'idle';
-          this.stateT = 0;
-          this.idleUntil = ts + 800;
-          break;
-        }
-        // face the target
-        this.facing = hovered.cx >= this.x ? 1 : -1;
-        if (this.stateT > 420) {
-          this.fireWeb(hovered, ts);
-        }
-        break;
-      }
-      case 'shoot': {
-        if (this.shot) {
-          this.shot.t = Math.min(1, this.shot.t + dt / 130);
-          if (this.shot.t >= 1) {
-            this.shot.hold -= dt;
-            if (this.shot.hold <= 0) {
-              (this as any).shotTarget?.classList?.remove('webbed');
-              this.shot = null;
-              this.state = 'idle';
-              this.stateT = 0;
-              this.idleUntil = ts + 500;
-              this.boredAt = ts + 8000;
-            }
-          }
+    if (this.body.authority === 'ON_SURFACE') {
+      const ok = this.physics.updateSurfacePosition(this.body);
+      if (!ok) this.enterState('FALLING');
+    } else if (this.body.authority === 'AIRBORNE') {
+      const hitFloor = this.physics.integrateAirborne(this.body, this.surfaces);
+      if (hitFloor) {
+        this.fallDist = this.body.worldY - this.fallStartWorldY;
+        if (this.fallDist > PHYS_CONFIG.dizzyThreshold) {
+          this.enterState('HARD_LANDING');
         } else {
-          this.state = 'idle';
+          this.enterState('LANDING');
+        }
+      } else {
+        // Emergency Web Catch if falling off document bottom
+        const docH = Math.max(document.documentElement.scrollHeight, window.innerHeight);
+        if (this.body.worldY >= docH - 120 && this.body.vy > 6) {
+          this.triggerSpiderSense();
+          this.swingRandom();
+        }
+      }
+    }
+  }
+
+  private updateStateLogic(dtMs: number, ts: number): void {
+    switch (this.state) {
+      case 'SITTING':
+        this.squash = 1 + Math.sin(ts * 0.0017) * 0.012;
+        if (ts > this.nextIdleDecisionTs) this.decideIdleAction(ts);
+        break;
+
+      case 'CRAWLING':
+        if (this.body.authority === 'ON_SURFACE' && this.body.currentSurface) {
+          const s = this.body.currentSurface;
+          this.body.surfaceOffsetX += (this.facing * 0.06 * dtMs) / s.width;
+          if (this.body.surfaceOffsetX <= 0.05 || this.body.surfaceOffsetX >= 0.95) {
+            this.enterState('SITTING');
+          }
         }
         break;
-      }
-      case 'leap': {
-        this.vy += GRAVITY;
-        this.x += this.vx;
-        this.y += this.vy;
-        if (this.y >= this.groundY() && this.vy > 0) {
-          this.y = this.groundY();
-          this.squash = 0.55; // landing squash
-          this.state = 'idle';
-          this.stateT = 0;
-          this.idleUntil = ts + 600;
+
+      case 'BACKFLIP':
+        if (this.body.vy >= 0 || this.stateT > 480) {
+          this.enterState('SWINGING');
         }
         break;
-      }
-      case 'swing': {
-        if (!this.rope) { this.state = 'idle'; break; }
-        this.rope.step(GRAVITY * 0.9, 0.996, 5);
+
+      case 'SWINGING':
+        if (!this.rope) { this.enterState('FALLING'); break; }
+        const anchorSy = this.anchorWorldY - window.scrollY;
+        this.rope.pin(this.anchorWorldX, anchorSy);
+        this.rope.step(PHYS_CONFIG.gravity * 0.9, 0.996, 5, 0);
+
         const end = this.rope.end();
-        this.x = end.x;
-        this.y = end.y;
-        const vel = this.rope.endVel();
-        this.facing = vel.x >= 0 ? 1 : -1;
-        if (this.stateT > 2400 || (Math.abs(vel.x) < 0.4 && this.stateT > 1200)) {
-          // let go!
-          this.vx = vel.x * 1.6;
-          this.vy = vel.y - 2;
-          this.rope = null;
-          this.state = 'leap';
-          this.stateT = 0;
-          this.boredAt = ts + 14000;
+        this.body.worldX = end.x;
+        this.body.worldY = end.y + window.scrollY;
+
+        const dist = Math.hypot(this.swingTargetWorldX - this.body.worldX, this.swingTargetWorldY - this.body.worldY);
+        if (dist < 28 || this.stateT > 3200) {
+          if (this.swingTargetSurface) {
+            this.landOnSurface(this.swingTargetSurface, 0.5);
+            this.enterState('LANDING');
+          } else {
+            this.enterState('RELEASING');
+          }
         }
         break;
-      }
-      case 'hang':
-      case 'wave': {
-        if (this.stateT > 1400) {
-          this.state = 'idle';
-          this.stateT = 0;
-          this.idleUntil = ts + 1000;
+
+      case 'LANDING':
+      case 'HARD_LANDING':
+        this.squash = Math.min(1, this.squash + dtMs * 0.004);
+        if (this.stateT > 380) {
+          if (this.fallDist > PHYS_CONFIG.dizzyThreshold) {
+            this.enterState('DIZZY');
+          } else {
+            this.enterState('SITTING');
+          }
         }
         break;
-      }
+
+      case 'DIZZY':
+        this.dizzyAngle = ts * 0.003;
+        if (this.stateT > 1600) this.enterState('RECOVERING');
+        break;
+
+      case 'RECOVERING':
+        if (this.stateT > 800) {
+          const nearest = this.surfaces.findNearby(this.body.worldX, this.body.worldY, 250);
+          if (nearest) {
+            this.landOnSurface(nearest, 0.5);
+            this.enterState('SITTING');
+          } else {
+            this.enterState('FALLING');
+          }
+        }
+        break;
+
+      case 'WAVING':
+      case 'STRETCHING':
+        if (this.stateT > 1500) this.enterState('SITTING');
+        break;
     }
 
-    // blink bookkeeping
-    if (ts > this.nextBlink) {
-      this.blinkT = 140;
-      this.nextBlink = ts + 1800 + Math.random() * 3200;
+    if (this.body.authority === 'ON_SURFACE' && this.mouseX > 0) {
+      this.facing = this.mouseX >= this.screenX() ? 1 : -1;
     }
-    if (this.blinkT > 0) this.blinkT -= dt;
   }
 
-  private enterAim(target: TargetInfo, ts: number): void {
-    this.state = 'aim';
-    this.stateT = 0;
-    this.facing = target.cx >= this.x ? 1 : -1;
-  }
-
-  private fireWeb(target: TargetInfo, ts: number): void {
-    this.shot = {
-      x0: this.handX(),
-      y0: this.handY(),
-      x1: target.cx,
-      y1: target.cy,
-      t: 0,
-      hold: 900,
-    };
-    (this as any).shotTarget = target.el;
-    target.el.classList.add('webbed');
-    this.state = 'shoot';
-    this.stateT = 0;
-  }
-
-  /** public: pages and demo buttons can trigger the show on demand */
-  swing(): void {
-    if (this.state === 'swing' || this.state === 'leap') return;
-    // clean up any active web shot first
-    if (this.shot) {
-      (this as any).shotTarget?.classList?.remove('webbed');
-      this.shot = null;
+  private decideIdleAction(ts: number): void {
+    const roll = Math.random();
+    if (roll < 0.35) {
+      this.facing = Math.random() < 0.5 ? 1 : -1;
+      this.enterState('CRAWLING');
+    } else if (roll < 0.55) {
+      this.enterState('WAVING');
+    } else if (roll < 0.70) {
+      this.enterState('STRETCHING');
+    } else {
+      this.anim.play('lookUp');
+      this.nextIdleDecisionTs = ts + 9000;
     }
-    // anchor on the "ceiling" ahead of the pet
-    const ax = Math.min(window.innerWidth - 60, Math.max(60, this.x + this.facing * 160));
-    const len = Math.max(120, this.y - 30);
-    const segs = 14;
-    this.rope = new Rope(ax, 4, segs, len / segs);
-    // position the rope end at the pet and kick it sideways
-    const e = this.rope.end();
-    const dx = this.x - e.x;
-    const dy = this.y - e.y;
-    for (const p of this.rope.points) { p.x += dx; p.y += dy; p.px += dx; p.py += dy; }
-    this.rope.kick(this.facing * 6.5, -1);
-    this.state = 'swing';
-    this.stateT = 0;
   }
 
-  // ------------------------------------------------ rendering
-  private render(ts: number): void {
+  private render(alpha: number): void {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    const blink = this.blinkT > 0;
-    const eyeDX: -1 | 0 | 1 =
-      this.mouseX < -100 ? 0 : this.mouseX < this.x - 10 ? -1 : this.mouseX > this.x + 10 ? 1 : 0;
+    applyShake(ctx, 16.6);
 
-    // active web shot line
-    if (this.shot) {
-      const ex = this.shot.x0 + (this.shot.x1 - this.shot.x0) * this.shot.t;
-      const ey = this.shot.y0 + (this.shot.y1 - this.shot.y0) * this.shot.t;
-      ctx.strokeStyle = '#F2F6FF';
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(this.shot.x0, this.shot.y0);
-      // slight sag for charm
-      const mx = (this.shot.x0 + ex) / 2;
-      const my = (this.shot.y0 + ey) / 2 + 3;
-      ctx.quadraticCurveTo(mx, my, ex, ey);
-      ctx.stroke();
-      // impact splat
-      if (this.shot.t >= 1) {
-        this.drawSplat(this.shot.x1, this.shot.y1);
-      }
+    const sx = this.screenX();
+    const sy = this.screenY();
+
+    // 1. Shadow
+    if (this.body.authority !== 'SWINGING') {
+      const floor = this.surfaces.findFloorBelow(this.body.worldX, this.body.worldY + 1, 1);
+      const shadowY = floor ? floor.worldY - window.scrollY : window.innerHeight;
+      drawShadow(ctx, sx, shadowY, sy, SCALE);
     }
 
-    // swing rope
+    // 2. Rope
     if (this.rope) this.rope.draw(ctx);
 
-    // pick pose
-    let pose: PoseName = 'CROUCH';
-    let rotation = 0;
-    let grip = false;
-    let drawY = this.y;
-    switch (this.state) {
-      case 'walk': pose = Math.floor(ts / 180) % 2 === 0 ? 'CROUCH' : 'FALL'; break;
-      case 'aim': case 'shoot': pose = 'SHOOT'; break;
-      case 'leap': pose = 'FALL'; break;
-      case 'swing': {
-        pose = 'SWING';
-        grip = true;
-        if (this.rope) {
-          const p0 = this.rope.points[0];
-          const e = this.rope.end();
-          rotation = Math.atan2(e.x - p0.x, -(e.y - p0.y)) * -0.55;
-        }
-        drawY = this.y;
-        break;
+    // 3. Spider-Sense Electric Spark (⚡)
+    if (this.spiderSenseT > 0) {
+      ctx.save();
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 16px monospace';
+      const sparkAlpha = Math.min(1, this.spiderSenseT / 200);
+      ctx.globalAlpha = sparkAlpha;
+      ctx.fillText('⚡', sx - 6, sy - 65 + Math.sin(performance.now() * 0.02) * 3);
+      ctx.restore();
+    }
+
+    // 4. Dizzy Stars
+    if (this.state === 'DIZZY') {
+      const n = 4, r = 20, t = performance.now() * 0.002;
+      ctx.fillStyle = '#FFD700';
+      for (let i = 0; i < n; i++) {
+        const a = t + (Math.PI * 2 * i) / n;
+        const x = sx + Math.cos(a) * r;
+        const y = sy - 22 + Math.sin(a) * (r * 0.4);
+        ctx.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4);
       }
-      case 'wave': pose = 'WAVE'; break;
-      default: pose = 'CROUCH';
     }
 
-    drawSprite(ctx, pose, Math.round(this.x), Math.round(drawY), SCALE, {
-      flip: this.facing === -1,
-      blink,
-      eyeDX,
-      rotation,
-      grip,
-      squashY: this.state === 'idle' || this.state === 'walk' ? this.squash : 1,
+    // 5. Sprite Drawing
+    const pose = this.anim.update(16.6);
+
+    let rot = 0;
+    if (this.state === 'BACKFLIP') {
+      rot = (this.stateT / 480) * Math.PI * 2;
+    } else if (this.state === 'SWINGING' && this.rope) {
+      const p0 = this.rope.points[0];
+      const e  = this.rope.end();
+      rot = Math.atan2(e.x - p0.x, -(e.y - p0.y)) * -0.45;
+    } else if (this.state === 'DIZZY') {
+      rot = Math.sin(this.dizzyAngle) * 0.18;
+    }
+
+    drawSprite(ctx, pose, Math.round(sx), Math.round(sy), SCALE, {
+      flip:     this.facing === -1,
+      rotation: rot,
+      squashY:  this.squash,
     });
+
+    updateParticles(16.6);
+    drawParticles(ctx);
+
+    // 6. SPIDEY_DEBUG Overlay
+    if ((window as any).SPIDEY_DEBUG) {
+      drawDebugOverlay(ctx, {
+        state:     this.state,
+        authority: this.body.authority,
+        screenX:   sx,
+        screenY:   sy,
+        vx:        this.body.vx,
+        vy:        this.body.vy,
+        surfaces:  this.surfaces.getAll(),
+        targetX:   this.swingTargetWorldX,
+        targetY:   this.swingTargetWorldY,
+        fps:       this.fps,
+      });
+    }
   }
 
-  private drawSplat(x: number, y: number): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = '#F2F6FF';
-    // little radial web splat
-    for (let i = 0; i < 8; i++) {
-      const a = (Math.PI * 2 * i) / 8;
-      const r = 7;
-      const dx = Math.round(Math.cos(a) * r);
-      const dy = Math.round(Math.sin(a) * r);
-      ctx.fillRect(x + dx - 1, y + dy - 1, 2, 2);
-    }
-    ctx.fillRect(x - 2, y - 2, 4, 4);
+  private onResize = (): void => {
+    this.canvas.width  = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.ctx.imageSmoothingEnabled = false;
+    this.surfaces.scan();
+  };
+
+  private resize(): void {
+    this.canvas.width  = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.ctx.imageSmoothingEnabled = false;
   }
+
+  private onMouseMove = (e: MouseEvent): void => {
+    this.mouseX = e.clientX;
+    this.mouseY = e.clientY;
+  };
 }
