@@ -107,6 +107,11 @@ export function drawSprite(
   ctx.save();
   ctx.translate(Math.round(x), Math.round(y));
 
+  // Subtle eye-tracking offset (shift sprite toward cursor direction)
+  const eyeOffsetX = (opts.eyeDX ?? 0) * 1.5;
+  const eyeOffsetY = (opts.eyeDY ?? 0) * 0.8;
+  ctx.translate(eyeOffsetX, eyeOffsetY);
+
   if (opts.rotation) ctx.rotate(opts.rotation);
   if (opts.squashY !== undefined && opts.squashY !== 1) {
     ctx.scale(1 / Math.sqrt(opts.squashY), opts.squashY);

@@ -1,5 +1,6 @@
 /**
- * effects.ts — lightweight particle system, shadow, and screen shake.
+ * effects.ts — Lightweight particle system, shadow, screen shake,
+ * web glow lines, and SPIDEY_DEBUG diagnostic HUD overlay.
  */
 
 /* ── Particles ────────────────────────────────────────────── */
@@ -55,12 +56,12 @@ export function updateParticles(dt: number): void {
     if (!p.alive) continue;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
-    p.vy += 0.0003 * dt; // subtle gravity
+    p.vy += 0.0003 * dt;
     p.life -= dt;
     if (p.life <= 0) { p.alive = false; continue; }
     const t = p.life / p.maxLife;
     p.alpha = t * (p.alpha > 0 ? 1 : 0);
-    p.size *= (0.998 + 0.002 * t); // shrink slowly
+    p.size *= (0.998 + 0.002 * t);
   }
 }
 
@@ -123,9 +124,8 @@ export function drawWebLine(
   const ex = x0 + (x1 - x0) * progress;
   const ey = y0 + (y1 - y0) * progress;
   const mx = (x0 + ex) / 2;
-  const my = (y0 + ey) / 2 + 5; // increased sag
+  const my = (y0 + ey) / 2 + 5;
 
-  // glow pass (wide, faint)
   ctx.strokeStyle = 'rgba(242,246,255,0.12)';
   ctx.lineWidth = 8;
   ctx.lineCap = 'round';
@@ -134,11 +134,82 @@ export function drawWebLine(
   ctx.quadraticCurveTo(mx, my, ex, ey);
   ctx.stroke();
 
-  // core pass (crisp)
   ctx.strokeStyle = '#F2F6FF';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(x0, y0);
   ctx.quadraticCurveTo(mx, my, ex, ey);
   ctx.stroke();
+}
+
+/* ── SPIDEY_DEBUG HUD Overlay ──────────────────────────────── */
+
+export function drawDebugOverlay(
+  ctx: CanvasRenderingContext2D,
+  info: {
+    state: string;
+    authority: string;
+    screenX: number;
+    screenY: number;
+    vx: number;
+    vy: number;
+    surfaces: Array<{ worldX: number; worldY: number; width: number; height: number; type: string }>;
+    targetX?: number;
+    targetY?: number;
+    fps: number;
+  },
+): void {
+  ctx.save();
+  const scrollY = window.scrollY;
+
+  // 1. Draw Surface Bounds & Types
+  ctx.lineWidth = 1;
+  ctx.font = '10px monospace';
+  for (const s of info.surfaces) {
+    const sy = s.worldY - scrollY;
+    ctx.strokeStyle = 'rgba(0, 230, 118, 0.6)';
+    ctx.strokeRect(s.worldX, sy, s.width, s.height);
+    ctx.fillStyle = 'rgba(0, 230, 118, 0.8)';
+    ctx.fillText(`${s.type}`, s.worldX + 2, sy + 10);
+  }
+
+  // 2. Character Collider & Velocity Vector
+  ctx.strokeStyle = 'rgba(255, 45, 85, 0.9)';
+  ctx.strokeRect(info.screenX - 16, info.screenY - 50, 32, 50);
+
+  // Velocity arrow
+  ctx.strokeStyle = '#FFCC00';
+  ctx.beginPath();
+  ctx.moveTo(info.screenX, info.screenY - 25);
+  ctx.lineTo(info.screenX + info.vx * 5, info.screenY - 25 + info.vy * 5);
+  ctx.stroke();
+
+  // Target line
+  if (info.targetX !== undefined && info.targetY !== undefined) {
+    const targetSy = info.targetY - scrollY;
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.7)';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(info.screenX, info.screenY - 25);
+    ctx.lineTo(info.targetX, targetSy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#00E5FF';
+    ctx.fillRect(info.targetX - 3, targetSy - 3, 6, 6);
+  }
+
+  // 3. Top-Left HUD Badge
+  ctx.fillStyle = 'rgba(10, 12, 20, 0.85)';
+  ctx.fillRect(12, 12, 210, 85);
+  ctx.strokeStyle = 'rgba(229, 37, 33, 0.8)';
+  ctx.strokeRect(12, 12, 210, 85);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '11px monospace';
+  ctx.fillText(`STATE:     ${info.state}`, 20, 30);
+  ctx.fillText(`AUTHORITY: ${info.authority}`, 20, 46);
+  ctx.fillText(`VELOCITY:  (${info.vx.toFixed(1)}, ${info.vy.toFixed(1)})`, 20, 62);
+  ctx.fillText(`FPS:       ${info.fps}`, 20, 78);
+
+  ctx.restore();
 }
