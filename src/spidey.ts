@@ -19,13 +19,12 @@ import {
   PhysicsEngine,
   PhysicsBody,
   PHYS_CONFIG,
-  COLLIDERS,
   type AuthorityMode,
 } from './physics.js';
 import {
   emit, updateParticles, drawParticles,
   triggerShake, applyShake,
-  drawShadow, drawWebLine, drawDebugOverlay,
+  drawShadow, drawDebugOverlay,
 } from './effects.js';
 
 const SCALE = DISPLAY_SCALE;
@@ -57,7 +56,6 @@ export class WebSlingerPet {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
 
-  // Single physics loop safety
   private animFrameId: number | null = null;
   private destroyed = false;
 
@@ -83,7 +81,7 @@ export class WebSlingerPet {
   private anim = new AnimationPlayer();
 
   private state: SpideyState = 'FALLING';
-  private stateT = 0; // ms in current state
+  private stateT = 0;
   private facing: 1 | -1 = 1;
 
   // Swing / Traversal
@@ -94,15 +92,16 @@ export class WebSlingerPet {
   private swingTargetWorldX = 0;
   private swingTargetWorldY = 0;
 
-  // Fall tracking for dizzy
+  // Fall tracking
   private fallStartWorldY = 0;
   private fallDist = 0;
 
-  // Visuals
+  // Visuals & Spider-Sense
   private squash = 1;
   private dizzyAngle = 0;
   private mouseX = -999;
   private mouseY = -999;
+  private spiderSenseT = 0; // Spider-sense spark timer
 
   // Timers & FPS
   private lastTs = 0;
@@ -113,7 +112,6 @@ export class WebSlingerPet {
   private fpsTimer = 0;
 
   constructor() {
-    // Prevent duplicate pet instances
     if ((window as any).__petInstance) {
       (window as any).__petInstance.destroy();
     }
@@ -131,8 +129,8 @@ export class WebSlingerPet {
     window.addEventListener('resize', this.onResize, { passive: true });
     window.addEventListener('mousemove', this.onMouseMove, { passive: true });
     window.addEventListener('pointermove', this.onMouseMove as EventListener, { passive: true });
+    window.addEventListener('keydown', this.onKeyDown);
 
-    // Initial spawn after DOM layout is ready
     requestAnimationFrame(() => {
       this.surfaces.scan();
       this.initSpawn();
@@ -140,15 +138,11 @@ export class WebSlingerPet {
     });
   }
 
-  // ── Single Loop Launcher ──────────────────────────────────────────────────
-
   private startLoop(): void {
     if (this.animFrameId !== null) cancelAnimationFrame(this.animFrameId);
     this.lastTs = performance.now();
     this.animFrameId = requestAnimationFrame(this.tick);
   }
-
-  // ── Spawn ──────────────────────────────────────────────────────────────────
 
   private initSpawn(): void {
     const spawn = this.surfaces.findSpawnSurface();
@@ -162,13 +156,63 @@ export class WebSlingerPet {
     }
   }
 
-  // ── User Click Traversal API ───────────────────────────────────────────────
+  // ── Keyboard Controls ──────────────────────────────────────────────────────
 
+  private onKeyDown = (e: KeyboardEvent): void => {
+    // Ignore input inside text fields
+    const target = e.target as HTMLElement;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+      return;
+    }
+
+    switch (e.code) {
+      case 'Space':
+        e.preventDefault();
+        this.triggerSpiderSense();
+        this.performAction('backflip');
+        break;
+      case 'KeyA':
+      case 'ArrowLeft':
+        this.facing = -1;
+        if (this.body.authority === 'ON_SURFACE') this.enterState('CRAWLING');
+        break;
+      case 'KeyD':
+      case 'ArrowRight':
+        this.facing = 1;
+        if (this.body.authority === 'ON_SURFACE') this.enterState('CRAWLING');
+        break;
+      case 'KeyW':
+      case 'ArrowUp':
+        this.performAction('webZip');
+        break;
+      case 'KeyG':
+        // Toggle Debug overlay
+        (window as any).SPIDEY_DEBUG = !(window as any).SPIDEY_DEBUG;
+        break;
+    }
+  };
+
+  /** Trigger Spider-Sense electric spark */
+  triggerSpiderSense(): void {
+    this.spiderSenseT = 600;
+  }
+
+  /** Direct Interaction: Click Target Element */
   reactToInteraction(el: HTMLElement): void {
+    // Direct click on Spider-Man himself!
+    const sx = this.screenX();
+    const sy = this.screenY();
+    if (Math.abs(this.mouseX - sx) < 40 && Math.abs(this.mouseY - sy) < 60) {
+      this.triggerSpiderSense();
+      this.performAction('backflip');
+      return;
+    }
+
     const now = performance.now();
-    if (now - this.lastInteractTs < 1800) return;
+    if (now - this.lastInteractTs < 1600) return;
     this.lastInteractTs = now;
 
+    this.triggerSpiderSense();
     this.surfaces.updateRects();
     const target = this.surfaces.getSurfaceFromElement(el);
     if (!target) return;
@@ -186,7 +230,6 @@ export class WebSlingerPet {
     if (this.body.authority === 'ON_SURFACE') {
       this.enterState('BACKFLIP');
     } else if (this.state === 'SWINGING') {
-      // Redirect mid-swing safely
       this.swingTargetSurface = target;
       this.swingTargetWorldX  = this.surfaces.centerX(target);
       this.swingTargetWorldY  = target.worldY;
@@ -204,20 +247,21 @@ export class WebSlingerPet {
       case 'backflip':
         this.detachSurface();
         this.body.vy = PHYS_CONFIG.backflipImpulseY;
-        this.body.vx = this.facing * 3;
+        this.body.vx = this.facing * 3.5;
         this.enterState('BACKFLIP');
         emit(8, { x: sx, y: sy, vxRange: 0.2, vyRange: 0.2, color: '#E52521', life: 400 });
         break;
       case 'webZip':
         this.detachSurface();
-        this.body.vy = -5;
-        this.body.vx = this.facing * 7;
+        this.body.vy = -6;
+        this.body.vx = this.facing * 7.5;
         this.enterState('AIRBORNE');
         this.anim.play('webZip');
+        emit(10, { x: sx, y: sy, vxRange: 0.2, vyRange: 0.2, color: '#FFFFFF', life: 300 });
         break;
       case 'attack':
         this.detachSurface();
-        this.body.vx = this.facing * 4;
+        this.body.vx = this.facing * 4.5;
         this.enterState('AIRBORNE');
         this.anim.play('attack');
         emit(10, { x: sx, y: sy, vxRange: 0.2, vyRange: 0.1, color: '#E52521', life: 300 });
@@ -225,7 +269,7 @@ export class WebSlingerPet {
         break;
       case 'roll':
         this.detachSurface();
-        this.body.vx = this.facing * 5;
+        this.body.vx = this.facing * 5.5;
         this.enterState('AIRBORNE');
         this.anim.play('roll');
         break;
@@ -257,11 +301,10 @@ export class WebSlingerPet {
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('pointermove', this.onMouseMove as EventListener);
+    window.removeEventListener('keydown', this.onKeyDown);
     this.surfaces.destroy();
     this.canvas.remove();
   }
-
-  // ── Helpers ────────────────────────────────────────────────────────────────
 
   private screenX(): number { return this.body.worldX; }
   private screenY(): number { return this.body.worldY - window.scrollY; }
@@ -281,9 +324,13 @@ export class WebSlingerPet {
     this.body.supported       = true;
     this.body.grounded        = true;
     this.body.authority       = 'ON_SURFACE';
-  }
 
-  // ── State Transitions ──────────────────────────────────────────────────────
+    // Highlight target element with webbed glow
+    if (s.el) {
+      s.el.classList.add('webbed');
+      setTimeout(() => s.el?.classList.remove('webbed'), 1200);
+    }
+  }
 
   private enterState(nextState: SpideyState): void {
     this.state  = nextState;
@@ -307,7 +354,7 @@ export class WebSlingerPet {
         this.anim.play('backflip');
         this.body.vy = PHYS_CONFIG.backflipImpulseY;
         const dx = this.swingTargetWorldX - this.body.worldX;
-        this.body.vx = (dx >= 0 ? 1 : -1) * Math.min(5, Math.max(1.5, Math.abs(dx) * 0.007));
+        this.body.vx = (dx >= 0 ? 1 : -1) * Math.min(5.5, Math.max(1.5, Math.abs(dx) * 0.007));
         this.fallStartWorldY = this.body.worldY;
         triggerShake(2);
         break;
@@ -399,8 +446,6 @@ export class WebSlingerPet {
     emit(10, { x: this.screenX(), y: this.screenY() - 16, vxRange: 0.1, vyRange: 0.1, life: 260, color: '#FFFFFF' });
   }
 
-  // ── Main Frame Tick ────────────────────────────────────────────────────────
-
   private tick = (ts: number): void => {
     if (this.destroyed) return;
 
@@ -408,7 +453,8 @@ export class WebSlingerPet {
     this.lastTs = ts;
     this.stateT += dtMs;
 
-    // FPS calculation for debug overlay
+    if (this.spiderSenseT > 0) this.spiderSenseT -= dtMs;
+
     this.frameCount++;
     this.fpsTimer += dtMs;
     if (this.fpsTimer >= 1000) {
@@ -417,21 +463,15 @@ export class WebSlingerPet {
       this.fpsTimer = 0;
     }
 
-    // 1. Run Fixed-Timestep Physics Accumulator Loop
     const { alpha } = this.physics.update(this.body, dtMs, this.surfaces, (dtSec) => {
       this.physicsStep(dtSec);
     });
 
-    // 2. High-Level State & Visual Logic
     this.updateStateLogic(dtMs, ts);
-
-    // 3. Render
     this.render(alpha);
 
     this.animFrameId = requestAnimationFrame(this.tick);
   };
-
-  // ── Fixed Timestep Physics Step ────────────────────────────────────────────
 
   private physicsStep(dtSec: number): void {
     this.surfaces.updateRects();
@@ -448,11 +488,16 @@ export class WebSlingerPet {
         } else {
           this.enterState('LANDING');
         }
+      } else {
+        // Emergency Web Catch if falling off document bottom
+        const docH = Math.max(document.documentElement.scrollHeight, window.innerHeight);
+        if (this.body.worldY >= docH - 120 && this.body.vy > 6) {
+          this.triggerSpiderSense();
+          this.swingRandom();
+        }
       }
     }
   }
-
-  // ── High Level State Logic ─────────────────────────────────────────────────
 
   private updateStateLogic(dtMs: number, ts: number): void {
     switch (this.state) {
@@ -553,8 +598,6 @@ export class WebSlingerPet {
     }
   }
 
-  // ── Render Frame ───────────────────────────────────────────────────────────
-
   private render(alpha: number): void {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -574,7 +617,18 @@ export class WebSlingerPet {
     // 2. Rope
     if (this.rope) this.rope.draw(ctx);
 
-    // 3. Dizzy Stars
+    // 3. Spider-Sense Electric Spark (⚡)
+    if (this.spiderSenseT > 0) {
+      ctx.save();
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 16px monospace';
+      const sparkAlpha = Math.min(1, this.spiderSenseT / 200);
+      ctx.globalAlpha = sparkAlpha;
+      ctx.fillText('⚡', sx - 6, sy - 65 + Math.sin(performance.now() * 0.02) * 3);
+      ctx.restore();
+    }
+
+    // 4. Dizzy Stars
     if (this.state === 'DIZZY') {
       const n = 4, r = 20, t = performance.now() * 0.002;
       ctx.fillStyle = '#FFD700';
@@ -586,7 +640,7 @@ export class WebSlingerPet {
       }
     }
 
-    // 4. Sprite Drawing
+    // 5. Sprite Drawing
     const pose = this.anim.update(16.6);
 
     let rot = 0;
@@ -609,7 +663,7 @@ export class WebSlingerPet {
     updateParticles(16.6);
     drawParticles(ctx);
 
-    // 5. SPIDEY_DEBUG Overlay
+    // 6. SPIDEY_DEBUG Overlay
     if ((window as any).SPIDEY_DEBUG) {
       drawDebugOverlay(ctx, {
         state:     this.state,
@@ -625,8 +679,6 @@ export class WebSlingerPet {
       });
     }
   }
-
-  // ── Event Handlers ─────────────────────────────────────────────────────────
 
   private onResize = (): void => {
     this.canvas.width  = window.innerWidth;
