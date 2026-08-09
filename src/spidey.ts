@@ -1,14 +1,20 @@
 /**
- * spidey.ts — Full 2D Web Physics Engine & State Machine for Spider-Man.
+ * spidey.ts — Spider-Man Upside-Down Button Hanging Interaction System.
  *
- * POSITIONAL AUTHORITY MODES
- * --------------------------
- * 1. ON_SURFACE : DOM surface geometry is authoritative.
- *                 Spider-Man's feet lock to surface.worldY, worldX = surface.worldX + width * offset.
- *                 Moves automatically with scroll, layout shifts, and element movement.
- * 2. AIRBORNE   : Physics Engine is authoritative (Euler integration + gravity + drag + swept AABB).
- * 3. SWINGING   : Verlet Rope pendulum constraint is authoritative. Preserves tangent velocity on release.
- * 4. CLINGING   : Wall surface is authoritative with surface normals.
+ * STATE MACHINE FLOW
+ * ------------------
+ * IDLE → TARGETING → WEB_ATTACHING → SWINGING → HANGING → IDLE_HANGING
+ *
+ * When ANY button/card on the webpage is clicked:
+ * 1. Spider-Man detects the clicked button.
+ * 2. Moves toward the button in a natural acrobatic arc (no instant teleporting!).
+ * 3. Deploys a web line attached exactly to the button's bottom anchor.
+ * 4. Swings underneath the button, smoothly rotating to an upside-down orientation (Math.PI).
+ * 5. Settles into IDLE_HANGING directly beneath the button, matching the reference image:
+ *    - Head pointing downward
+ *    - Feet connected to the web line running up to the button
+ *    - Continuous subtle pendulum sway & vertical bobbing
+ *    - Positional authority locks to the button during scroll/resize.
  */
 
 import { drawSprite, getHandPosition, DISPLAY_SCALE, type PoseName } from './sprite.js';
@@ -19,30 +25,27 @@ import {
   PhysicsEngine,
   PhysicsBody,
   PHYS_CONFIG,
-  type AuthorityMode,
 } from './physics.js';
 import {
   emit, updateParticles, drawParticles,
   triggerShake, applyShake,
-  drawShadow, drawDebugOverlay,
+  drawShadow, drawWebLine, drawDebugOverlay,
 } from './effects.js';
 
 const SCALE = DISPLAY_SCALE;
 
 export type SpideyState =
-  | 'SITTING'
-  | 'STANDING'
-  | 'CROUCHING'
-  | 'WALKING'
-  | 'CRAWLING'
-  | 'CLINGING'
-  | 'CEILING'
-  | 'HANGING'
-  | 'WEB_SHOOT'
+  | 'IDLE'
+  | 'TARGETING'
+  | 'WEB_ATTACHING'
   | 'SWINGING'
   | 'RELEASING'
+  | 'HANGING'
+  | 'IDLE_HANGING'
+  | 'SITTING'
+  | 'WALKING'
+  | 'CRAWLING'
   | 'BACKFLIP'
-  | 'JUMPING'
   | 'AIRBORNE'
   | 'FALLING'
   | 'LANDING'
@@ -59,7 +62,7 @@ export class WebSlingerPet {
   private animFrameId: number | null = null;
   private destroyed = false;
 
-  // Core Physics Body
+  // Physics Body
   private body: PhysicsBody = {
     worldX: 400,
     worldY: 400,
@@ -81,16 +84,18 @@ export class WebSlingerPet {
   private anim = new AnimationPlayer();
 
   private state: SpideyState = 'FALLING';
-  private stateT = 0;
+  private stateT = 0; // ms in current state
   private facing: 1 | -1 = 1;
 
-  // Swing / Traversal
+  // Target Button & Web Anchor
+  private targetSurface: Surface | null = null;
+  private targetAnchorWorldX = 0;
+  private targetAnchorWorldY = 0;
+
+  // Web Rope & Hanging Physics
   private rope: Rope | null = null;
-  private anchorWorldX = 0;
-  private anchorWorldY = 0;
-  private swingTargetSurface: Surface | null = null;
-  private swingTargetWorldX = 0;
-  private swingTargetWorldY = 0;
+  private hangingRopeLen = 90; // px distance below button when hanging
+  private currentRotation = 0;
 
   // Fall tracking
   private fallStartWorldY = 0;
@@ -101,7 +106,7 @@ export class WebSlingerPet {
   private dizzyAngle = 0;
   private mouseX = -999;
   private mouseY = -999;
-  private spiderSenseT = 0; // Spider-sense spark timer
+  private spiderSenseT = 0;
 
   // Timers & FPS
   private lastTs = 0;
@@ -159,7 +164,6 @@ export class WebSlingerPet {
   // ── Keyboard Controls ──────────────────────────────────────────────────────
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    // Ignore input inside text fields
     const target = e.target as HTMLElement;
     if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
       return;
@@ -186,20 +190,19 @@ export class WebSlingerPet {
         this.performAction('webZip');
         break;
       case 'KeyG':
-        // Toggle Debug overlay
         (window as any).SPIDEY_DEBUG = !(window as any).SPIDEY_DEBUG;
         break;
     }
   };
 
-  /** Trigger Spider-Sense electric spark */
   triggerSpiderSense(): void {
     this.spiderSenseT = 600;
   }
 
-  /** Direct Interaction: Click Target Element */
+  // ── Primary Interaction: Click ANY Button ─────────────────────────────────
+
   reactToInteraction(el: HTMLElement): void {
-    // Direct click on Spider-Man himself!
+    // Direct click on Spider-Man himself
     const sx = this.screenX();
     const sy = this.screenY();
     if (Math.abs(this.mouseX - sx) < 40 && Math.abs(this.mouseY - sy) < 60) {
@@ -209,7 +212,7 @@ export class WebSlingerPet {
     }
 
     const now = performance.now();
-    if (now - this.lastInteractTs < 1600) return;
+    if (now - this.lastInteractTs < 1200) return;
     this.lastInteractTs = now;
 
     this.triggerSpiderSense();
@@ -217,23 +220,13 @@ export class WebSlingerPet {
     const target = this.surfaces.getSurfaceFromElement(el);
     if (!target) return;
 
-    if (target === this.body.currentSurface) {
-      this.anim.play('sitFidget');
-      return;
-    }
+    this.targetSurface = target;
+    this.targetAnchorWorldX = this.surfaces.centerX(target);
+    this.targetAnchorWorldY = target.worldY + target.height; // Web anchor at bottom of clicked button
+    this.facing = this.targetAnchorWorldX >= this.body.worldX ? 1 : -1;
 
-    this.swingTargetSurface = target;
-    this.swingTargetWorldX  = this.surfaces.centerX(target);
-    this.swingTargetWorldY  = target.worldY;
-    this.facing = this.swingTargetWorldX >= this.body.worldX ? 1 : -1;
-
-    if (this.body.authority === 'ON_SURFACE') {
-      this.enterState('BACKFLIP');
-    } else if (this.state === 'SWINGING') {
-      this.swingTargetSurface = target;
-      this.swingTargetWorldX  = this.surfaces.centerX(target);
-      this.swingTargetWorldY  = target.worldY;
-    }
+    // Trigger state flow: TARGETING -> WEB_ATTACHING -> SWINGING -> HANGING -> IDLE_HANGING
+    this.enterState('TARGETING');
   }
 
   performAction(action: string): void {
@@ -286,13 +279,17 @@ export class WebSlingerPet {
   }
 
   private swingRandom(): void {
-    const ax = Math.min(window.innerWidth - 60, Math.max(60, this.body.worldX + this.facing * 200));
-    const ay = Math.max(0, this.body.worldY - 120);
-    this.swingTargetWorldX  = ax;
-    this.swingTargetWorldY  = ay;
-    this.swingTargetSurface = null;
-    this.lastInteractTs = -3000;
-    if (this.body.authority === 'ON_SURFACE') this.enterState('BACKFLIP');
+    const spawn = this.surfaces.findSpawnSurface();
+    if (spawn && spawn.el) {
+      this.reactToInteraction(spawn.el);
+    } else {
+      const ax = Math.min(window.innerWidth - 60, Math.max(60, this.body.worldX + this.facing * 200));
+      const ay = Math.max(0, this.body.worldY - 120);
+      this.targetAnchorWorldX = ax;
+      this.targetAnchorWorldY = ay;
+      this.targetSurface = null;
+      this.enterState('TARGETING');
+    }
   }
 
   destroy(): void {
@@ -325,23 +322,60 @@ export class WebSlingerPet {
     this.body.grounded        = true;
     this.body.authority       = 'ON_SURFACE';
 
-    // Highlight target element with webbed glow
     if (s.el) {
       s.el.classList.add('webbed');
       setTimeout(() => s.el?.classList.remove('webbed'), 1200);
     }
   }
 
+  // ── State Machine Transitions ─────────────────────────────────────────────
+
   private enterState(nextState: SpideyState): void {
     this.state  = nextState;
     this.stateT = 0;
 
     switch (nextState) {
+      case 'IDLE':
       case 'SITTING':
         this.body.authority = 'ON_SURFACE';
         this.anim.play('sit');
         this.squash = 1;
+        this.currentRotation = 0;
         this.nextIdleDecisionTs = performance.now() + 6000 + Math.random() * 5000;
+        break;
+
+      case 'TARGETING':
+        this.detachSurface();
+        this.anim.play('prepare'); // Crouch/prepare pose before launch
+        break;
+
+      case 'WEB_ATTACHING':
+        this.anim.play('webShoot');
+        this.body.vy = -6.5;
+        const dx = this.targetAnchorWorldX - this.body.worldX;
+        this.body.vx = (dx >= 0 ? 1 : -1) * Math.min(5.5, Math.max(1.8, Math.abs(dx) * 0.008));
+        this.fallStartWorldY = this.body.worldY;
+        emit(10, { x: this.screenX(), y: this.screenY() - 16, vxRange: 0.1, vyRange: 0.1, life: 260, color: '#FFFFFF' });
+        break;
+
+      case 'SWINGING':
+        this.body.authority = 'SWINGING';
+        this.anim.play('swing');
+        this.initRope();
+        break;
+
+      case 'HANGING':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('hanging');
+        this.squash = 0.70; // Squash rebound upon reaching upside-down hanging position
+        triggerShake(3, 0.88);
+        break;
+
+      case 'IDLE_HANGING':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('idleHanging');
+        this.currentRotation = Math.PI; // Inverted upside-down (180 degrees)
+        this.squash = 1.0;
         break;
 
       case 'CRAWLING':
@@ -353,16 +387,10 @@ export class WebSlingerPet {
         this.detachSurface();
         this.anim.play('backflip');
         this.body.vy = PHYS_CONFIG.backflipImpulseY;
-        const dx = this.swingTargetWorldX - this.body.worldX;
-        this.body.vx = (dx >= 0 ? 1 : -1) * Math.min(5.5, Math.max(1.5, Math.abs(dx) * 0.007));
+        const bdx = this.targetAnchorWorldX - this.body.worldX;
+        this.body.vx = (bdx >= 0 ? 1 : -1) * Math.min(5, Math.max(1.5, Math.abs(bdx) * 0.007));
         this.fallStartWorldY = this.body.worldY;
         triggerShake(2);
-        break;
-
-      case 'SWINGING':
-        this.body.authority = 'SWINGING';
-        this.anim.play('swing');
-        this.initRope();
         break;
 
       case 'RELEASING':
@@ -379,6 +407,7 @@ export class WebSlingerPet {
       case 'FALLING':
         this.detachSurface();
         this.anim.play('fall');
+        this.currentRotation = 0;
         this.fallStartWorldY = this.body.worldY;
         break;
 
@@ -387,6 +416,7 @@ export class WebSlingerPet {
         const hard = nextState === 'HARD_LANDING';
         this.squash = hard ? 0.35 : 0.60;
         this.anim.play('land');
+        this.currentRotation = 0;
         const sx = this.screenX();
         const sy = this.screenY();
         if (hard) {
@@ -409,11 +439,6 @@ export class WebSlingerPet {
         this.anim.play('idle');
         break;
 
-      case 'CLINGING':
-        this.body.authority = 'CLINGING';
-        this.anim.play('cling');
-        break;
-
       case 'WAVING':
         this.anim.play('wave');
         break;
@@ -425,17 +450,12 @@ export class WebSlingerPet {
   }
 
   private initRope(): void {
-    const midX = (this.body.worldX + this.swingTargetWorldX) / 2 + (Math.random() - 0.5) * 50;
-    const topY = Math.min(this.body.worldY, this.swingTargetWorldY);
-    this.anchorWorldX = midX;
-    this.anchorWorldY = Math.max(window.scrollY + 20, topY - 140 - Math.random() * 60);
-
     const segs   = 12;
-    const dist   = Math.hypot(this.body.worldX - this.anchorWorldX, this.body.worldY - this.anchorWorldY);
-    const segLen = Math.max(10, dist / segs);
+    const anchorSy = this.targetAnchorWorldY - window.scrollY;
+    const dist   = Math.hypot(this.body.worldX - this.targetAnchorWorldX, this.body.worldY - anchorSy);
+    const segLen = Math.max(8, dist / segs);
 
-    const anchorSy = this.anchorWorldY - window.scrollY;
-    this.rope = new Rope(this.anchorWorldX, anchorSy, segs, segLen);
+    this.rope = new Rope(this.targetAnchorWorldX, anchorSy, segs, segLen);
 
     const e  = this.rope.end();
     const oX = this.screenX() - e.x;
@@ -443,8 +463,9 @@ export class WebSlingerPet {
     for (const p of this.rope.points) { p.x += oX; p.y += oY; p.px += oX; p.py += oY; }
 
     this.rope.kick(this.body.vx, this.body.vy);
-    emit(10, { x: this.screenX(), y: this.screenY() - 16, vxRange: 0.1, vyRange: 0.1, life: 260, color: '#FFFFFF' });
   }
+
+  // ── Main Deterministic Frame Tick ──────────────────────────────────────────
 
   private tick = (ts: number): void => {
     if (this.destroyed) return;
@@ -476,7 +497,28 @@ export class WebSlingerPet {
   private physicsStep(dtSec: number): void {
     this.surfaces.updateRects();
 
-    if (this.body.authority === 'ON_SURFACE') {
+    // Dynamically update target anchor position if surface moves/scrolls
+    if (this.targetSurface && this.targetSurface.isConnected()) {
+      const r = this.targetSurface.el ? this.targetSurface.el.getBoundingClientRect() : null;
+      if (r) {
+        this.targetAnchorWorldX = r.left + r.width / 2;
+        this.targetAnchorWorldY = r.top + window.scrollY + r.height;
+      }
+    }
+
+    if (this.state === 'IDLE_HANGING' || this.state === 'HANGING') {
+      // Positional Authority: Locked to button anchor in document space
+      const sway = Math.sin(performance.now() * 0.002) * 0.08;
+      const bob  = Math.sin(performance.now() * 0.003) * 2.5;
+
+      this.body.worldX = this.targetAnchorWorldX + Math.sin(sway) * 12;
+      this.body.worldY = this.targetAnchorWorldY + this.hangingRopeLen + bob;
+      this.body.vx     = 0;
+      this.body.vy     = 0;
+      this.body.supported = true;
+      this.body.grounded  = true;
+      this.currentRotation = Math.PI + sway; // Upside down rotation with gentle sway
+    } else if (this.body.authority === 'ON_SURFACE') {
       const ok = this.physics.updateSurfacePosition(this.body);
       if (!ok) this.enterState('FALLING');
     } else if (this.body.authority === 'AIRBORNE') {
@@ -488,20 +530,61 @@ export class WebSlingerPet {
         } else {
           this.enterState('LANDING');
         }
-      } else {
-        // Emergency Web Catch if falling off document bottom
-        const docH = Math.max(document.documentElement.scrollHeight, window.innerHeight);
-        if (this.body.worldY >= docH - 120 && this.body.vy > 6) {
-          this.triggerSpiderSense();
-          this.swingRandom();
-        }
       }
     }
   }
 
+  // ── High-Level State Machine Logic ────────────────────────────────────────
+
   private updateStateLogic(dtMs: number, ts: number): void {
     switch (this.state) {
+      case 'TARGETING':
+        if (this.stateT > 180) {
+          this.enterState('WEB_ATTACHING');
+        }
+        break;
+
+      case 'WEB_ATTACHING':
+        if (this.stateT > 120) {
+          this.enterState('SWINGING');
+        }
+        break;
+
+      case 'SWINGING':
+        if (!this.rope) { this.enterState('FALLING'); break; }
+
+        const anchorSy = this.targetAnchorWorldY - window.scrollY;
+        this.rope.pin(this.targetAnchorWorldX, anchorSy);
+        this.rope.step(PHYS_CONFIG.gravity * 0.85, 0.994, 5, 0);
+
+        const end = this.rope.end();
+        this.body.worldX = end.x;
+        this.body.worldY = end.y + window.scrollY;
+
+        // Smooth rotation interpolation toward upside-down (Math.PI)
+        const targetRot = Math.PI;
+        this.currentRotation += (targetRot - this.currentRotation) * 0.08;
+
+        const dist = Math.hypot(this.targetAnchorWorldX - this.body.worldX, (this.targetAnchorWorldY + this.hangingRopeLen) - this.body.worldY);
+        if (dist < 32 || this.stateT > 2800) {
+          this.enterState('HANGING');
+        }
+        break;
+
+      case 'HANGING':
+        this.squash = Math.min(1.0, this.squash + dtMs * 0.005);
+        if (this.stateT > 300) {
+          this.enterState('IDLE_HANGING');
+        }
+        break;
+
+      case 'IDLE_HANGING':
+        // Continuous subtle upside-down hanging idle
+        this.squash = 1.0 + Math.sin(ts * 0.002) * 0.015;
+        break;
+
       case 'SITTING':
+      case 'IDLE':
         this.squash = 1 + Math.sin(ts * 0.0017) * 0.012;
         if (ts > this.nextIdleDecisionTs) this.decideIdleAction(ts);
         break;
@@ -519,27 +602,6 @@ export class WebSlingerPet {
       case 'BACKFLIP':
         if (this.body.vy >= 0 || this.stateT > 480) {
           this.enterState('SWINGING');
-        }
-        break;
-
-      case 'SWINGING':
-        if (!this.rope) { this.enterState('FALLING'); break; }
-        const anchorSy = this.anchorWorldY - window.scrollY;
-        this.rope.pin(this.anchorWorldX, anchorSy);
-        this.rope.step(PHYS_CONFIG.gravity * 0.9, 0.996, 5, 0);
-
-        const end = this.rope.end();
-        this.body.worldX = end.x;
-        this.body.worldY = end.y + window.scrollY;
-
-        const dist = Math.hypot(this.swingTargetWorldX - this.body.worldX, this.swingTargetWorldY - this.body.worldY);
-        if (dist < 28 || this.stateT > 3200) {
-          if (this.swingTargetSurface) {
-            this.landOnSurface(this.swingTargetSurface, 0.5);
-            this.enterState('LANDING');
-          } else {
-            this.enterState('RELEASING');
-          }
         }
         break;
 
@@ -578,7 +640,7 @@ export class WebSlingerPet {
         break;
     }
 
-    if (this.body.authority === 'ON_SURFACE' && this.mouseX > 0) {
+    if (this.body.authority === 'ON_SURFACE' && this.state !== 'IDLE_HANGING' && this.state !== 'HANGING' && this.mouseX > 0) {
       this.facing = this.mouseX >= this.screenX() ? 1 : -1;
     }
   }
@@ -598,6 +660,8 @@ export class WebSlingerPet {
     }
   }
 
+  // ── Render Frame ───────────────────────────────────────────────────────────
+
   private render(alpha: number): void {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -607,15 +671,26 @@ export class WebSlingerPet {
     const sx = this.screenX();
     const sy = this.screenY();
 
-    // 1. Shadow
-    if (this.body.authority !== 'SWINGING') {
+    // 1. Shadow (only when grounded on horizontal surface)
+    if (this.state === 'SITTING' || this.state === 'CRAWLING' || this.state === 'WALKING' || this.state === 'LANDING') {
       const floor = this.surfaces.findFloorBelow(this.body.worldX, this.body.worldY + 1, 1);
       const shadowY = floor ? floor.worldY - window.scrollY : window.innerHeight;
       drawShadow(ctx, sx, shadowY, sy, SCALE);
     }
 
-    // 2. Rope
-    if (this.rope) this.rope.draw(ctx);
+    // 2. Web Line to Target Button Anchor
+    if (this.state === 'IDLE_HANGING' || this.state === 'HANGING' || this.state === 'SWINGING' || this.state === 'WEB_ATTACHING') {
+      const anchorSy = this.targetAnchorWorldY - window.scrollY;
+
+      if (this.rope) {
+        this.rope.draw(ctx);
+      } else {
+        // Draw crisp dynamic web line connecting button anchor -> Spider-Man's feet/attachment point
+        const progress = this.state === 'WEB_ATTACHING' ? Math.min(1.0, this.stateT / 120) : 1.0;
+        const feetY = this.state === 'IDLE_HANGING' || this.state === 'HANGING' ? sy - 40 : sy - 15;
+        drawWebLine(ctx, this.targetAnchorWorldX, anchorSy, sx, feetY, progress);
+      }
+    }
 
     // 3. Spider-Sense Electric Spark (⚡)
     if (this.spiderSenseT > 0) {
@@ -640,16 +715,12 @@ export class WebSlingerPet {
       }
     }
 
-    // 5. Sprite Drawing
+    // 5. Sprite Rendering with Rotation
     const pose = this.anim.update(16.6);
 
-    let rot = 0;
+    let rot = this.currentRotation;
     if (this.state === 'BACKFLIP') {
       rot = (this.stateT / 480) * Math.PI * 2;
-    } else if (this.state === 'SWINGING' && this.rope) {
-      const p0 = this.rope.points[0];
-      const e  = this.rope.end();
-      rot = Math.atan2(e.x - p0.x, -(e.y - p0.y)) * -0.45;
     } else if (this.state === 'DIZZY') {
       rot = Math.sin(this.dizzyAngle) * 0.18;
     }
@@ -663,7 +734,7 @@ export class WebSlingerPet {
     updateParticles(16.6);
     drawParticles(ctx);
 
-    // 6. SPIDEY_DEBUG Overlay
+    // 6. Diagnostic Debug Overlay (if ?debug=1 or window.SPIDEY_DEBUG = true)
     if ((window as any).SPIDEY_DEBUG) {
       drawDebugOverlay(ctx, {
         state:     this.state,
@@ -673,12 +744,14 @@ export class WebSlingerPet {
         vx:        this.body.vx,
         vy:        this.body.vy,
         surfaces:  this.surfaces.getAll(),
-        targetX:   this.swingTargetWorldX,
-        targetY:   this.swingTargetWorldY,
+        targetX:   this.targetAnchorWorldX,
+        targetY:   this.targetAnchorWorldY,
         fps:       this.fps,
       });
     }
   }
+
+  // ── Event Handlers ─────────────────────────────────────────────────────────
 
   private onResize = (): void => {
     this.canvas.width  = window.innerWidth;

@@ -1,10 +1,10 @@
 /**
  * sprite.ts — High-performance image-based sprite renderer for Spider-Man.
- * Loads the user's custom sprite sheet (spidey-spritesheet.png), automatically
- * chroma-keys the background to 100% transparent, and renders centered frames.
+ * Uses cached offscreen canvas from SpriteSheetLoader and renders deterministic frames.
  */
 
 import { POSES, type FramePose } from './sprite-poses.js';
+import { SpriteSheetLoader } from './loader.js';
 
 export const SPRITE_W = 60;
 export const SPRITE_H = 100;
@@ -25,51 +25,10 @@ export interface DrawOptions {
 
 type Ctx = CanvasRenderingContext2D;
 
-let spriteCanvas: HTMLCanvasElement | null = null;
-let spriteLoaded = false;
-
-// ── Background Chroma-Key Pre-Processing ────────────────────────────────────
-
-function initSpriteSheet(): void {
-  const img = new Image();
-  img.src = '/spidey-spritesheet.png';
-  img.crossOrigin = 'anonymous';
-
-  img.onload = () => {
-    const offscreen = document.createElement('canvas');
-    offscreen.width  = img.width;
-    offscreen.height = img.height;
-    const octx = offscreen.getContext('2d')!;
-
-    octx.drawImage(img, 0, 0);
-
-    // Chroma-key out grey background (RGB ~180, 180, 180)
-    const imgData = octx.getImageData(0, 0, img.width, img.height);
-    const d = imgData.data;
-
-    // Sample background color at (5, 5)
-    const bgR = d[(5 * img.width + 5) * 4 + 0];
-    const bgG = d[(5 * img.width + 5) * 4 + 1];
-    const bgB = d[(5 * img.width + 5) * 4 + 2];
-
-    for (let i = 0; i < d.length; i += 4) {
-      const r = d[i], g = d[i + 1], b = d[i + 2];
-      const diff = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB);
-      if (diff < 40) {
-        d[i + 3] = 0; // Make background transparent
-      }
-    }
-
-    octx.putImageData(imgData, 0, 0);
-    spriteCanvas = offscreen;
-    spriteLoaded = true;
-  };
-}
-
-// Start loading immediately
-if (typeof window !== 'undefined') {
-  initSpriteSheet();
-}
+// Pre-init sprite sheet loader
+SpriteSheetLoader.getInstance().load().catch((err) => {
+  console.error('Failed to pre-load sprite sheet:', err);
+});
 
 // ── Hand Position Lookup ───────────────────────────────────────────────────
 
@@ -99,17 +58,25 @@ export function drawSprite(
   x: number,
   y: number,
   scale: number = DISPLAY_SCALE,
-  opts: DrawOptions = {}
+  opts: DrawOptions = {},
+  customCanvas?: HTMLCanvasElement | null
 ): void {
-  const p = POSES[poseName] || POSES.IDLE;
+  const spriteCanvas = customCanvas || SpriteSheetLoader.getInstance().getCanvas();
+  if (!spriteCanvas) {
+    // Canvas is still loading; do not render invalid/empty frame or red placeholder
+    return;
+  }
+
+  const p: FramePose = POSES[poseName] || POSES.IDLE;
   if (!p) return;
 
   ctx.save();
+  ctx.imageSmoothingEnabled = false;
   ctx.translate(Math.round(x), Math.round(y));
 
   // Subtle eye-tracking offset (shift sprite toward cursor direction)
-  const eyeOffsetX = (opts.eyeDX ?? 0) * 1.5;
-  const eyeOffsetY = (opts.eyeDY ?? 0) * 0.8;
+  const eyeOffsetX = Math.round((opts.eyeDX ?? 0) * 1.5);
+  const eyeOffsetY = Math.round((opts.eyeDY ?? 0) * 0.8);
   ctx.translate(eyeOffsetX, eyeOffsetY);
 
   if (opts.rotation) ctx.rotate(opts.rotation);
@@ -118,24 +85,18 @@ export function drawSprite(
   }
   if (opts.flip) ctx.scale(-1, 1);
 
-  const drawW = p.w * scale;
-  const drawH = p.h * scale;
+  const drawW = Math.round(p.w * scale);
+  const drawH = Math.round(p.h * scale);
 
   // Origin offset based on frame anchors
-  const originX = -drawW * p.anchorX;
-  const originY = -drawH * p.anchorY;
+  const originX = Math.round(-drawW * p.anchorX);
+  const originY = Math.round(-drawH * p.anchorY);
 
-  if (spriteLoaded && spriteCanvas) {
-    ctx.drawImage(
-      spriteCanvas,
-      p.x, p.y, p.w, p.h,
-      originX, originY, drawW, drawH
-    );
-  } else {
-    // Fallback red rectangle placeholder while image loads
-    ctx.fillStyle = '#E52521';
-    ctx.fillRect(originX, originY, drawW, drawH);
-  }
+  ctx.drawImage(
+    spriteCanvas,
+    p.x, p.y, p.w, p.h,
+    originX, originY, drawW, drawH
+  );
 
   ctx.restore();
 }

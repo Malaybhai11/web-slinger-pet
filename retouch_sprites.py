@@ -1,5 +1,5 @@
 """
-retouch_sprites.py — Professional Retouch, Artifact Removal, Edge Sharpening,
+retouch_sprites.py -- Professional Retouch, Artifact Removal, Edge Sharpening,
 and Uniform Grid Generator for Spider-Man Sprite Sheet.
 """
 
@@ -10,10 +10,8 @@ def process_sprite_sheet():
     pixels = img.load()
     width, height = img.size
 
-    # Sample background color
     bg_r, bg_g, bg_b, _ = pixels[5, 5]
 
-    # 1. Background Artifact & Noise Removal
     for y in range(height):
         for x in range(width):
             r, g, b, a = pixels[x, y]
@@ -21,17 +19,15 @@ def process_sprite_sheet():
             if diff < 50:
                 pixels[x, y] = (0, 0, 0, 0)
             else:
-                # Color Palette Enhancement & Edge Sharpening
                 if r > 210 and g > 210 and b > 210:
-                    pixels[x, y] = (255, 255, 255, 255) # Sharp white eyes
+                    pixels[x, y] = (255, 255, 255, 255)
                 elif r < 45 and g < 45 and b < 50:
-                    pixels[x, y] = (10, 10, 16, 255)   # Crisp dark outline
+                    pixels[x, y] = (10, 10, 16, 255)
                 elif r > 140 and g < 70 and b < 70:
-                    pixels[x, y] = (229, 37, 33, 255)  # Vibrant Red
+                    pixels[x, y] = (229, 37, 33, 255)
                 elif r < 60 and g < 60 and b > 70:
-                    pixels[x, y] = (27, 30, 43, 255)   # Crisp Navy Blue
+                    pixels[x, y] = (27, 30, 43, 255)
 
-    # 2. Despeckle — remove isolated stray artifact pixels
     clean_img = img.copy()
     clean_pixels = clean_img.load()
 
@@ -47,9 +43,7 @@ def process_sprite_sheet():
                 if neighbors == 0:
                     clean_pixels[x, y] = (0, 0, 0, 0)
 
-    # 3. Sprite Bounding Box Extraction & Frame Definition
     raw_boxes = [
-        # Row 1 (Idle, Crouches, Acrobatics)
         {"name": "IDLE_1",     "box": (42, 21, 91, 139),   "ground": True,  "handX": 10, "handY": -60},
         {"name": "SIT",        "box": (160, 53, 224, 137),  "ground": True,  "handX": 10, "handY": -40},
         {"name": "CROUCH_1",   "box": (280, 43, 353, 137),  "ground": True,  "handX": 10, "handY": -45},
@@ -59,7 +53,6 @@ def process_sprite_sheet():
         {"name": "JUMP_3",      "box": (788, 40, 870, 138),  "ground": False, "handX": 20, "handY": -50},
         {"name": "BACKFLIP_4", "box": (904, 32, 1008, 139), "ground": False, "handX": 30, "handY": -50},
 
-        # Row 2 (Web Shooting & Zip)
         {"name": "WEB_SHOOT_1", "box": (37, 145, 104, 276),  "ground": True,  "handX": 20, "handY": -110},
         {"name": "WEB_SHOOT_2", "box": (152, 168, 223, 276), "ground": True,  "handX": 20, "handY": -90},
         {"name": "WEB_SHOOT_3", "box": (275, 176, 370, 275), "ground": True,  "handX": 40, "handY": -70},
@@ -67,7 +60,6 @@ def process_sprite_sheet():
         {"name": "WEB_ZIP_1",   "box": (556, 166, 608, 272), "ground": False, "handX": 15, "handY": -90, "grip": True},
         {"name": "WEB_ZIP_2",   "box": (786, 187, 865, 248), "ground": False, "handX": 30, "handY": -40, "grip": True},
 
-        # Row 3 (Web Swinging Pendulum)
         {"name": "SWING_1", "box": (32, 288, 128, 413),   "ground": False, "handX": 30, "handY": -90,  "grip": True},
         {"name": "SWING_2", "box": (146, 281, 256, 414),  "ground": False, "handX": 35, "handY": -100, "grip": True},
         {"name": "SWING_3", "box": (278, 280, 384, 414),  "ground": False, "handX": 35, "handY": -100, "grip": True},
@@ -77,7 +69,6 @@ def process_sprite_sheet():
         {"name": "SWING_7", "box": (895, 281, 1011, 381), "ground": False, "handX": 45, "handY": -70,  "grip": True},
         {"name": "SWING_8", "box": (270, 408, 361, 539),  "ground": False, "handX": 25, "handY": -100, "grip": True},
 
-        # Row 4 (Idle variants, Walk loop)
         {"name": "IDLE_2",  "box": (43, 432, 95, 547),   "ground": True,  "handX": 10, "handY": -60},
         {"name": "IDLE_3",  "box": (161, 430, 213, 547), "ground": True,  "handX": 10, "handY": -60},
         {"name": "IDLE_4",  "box": (417, 424, 467, 544), "ground": True,  "handX": 10, "handY": -60},
@@ -200,6 +191,7 @@ def process_sprite_sheet():
         "CLING_2": "WEB_ZIP_1",
         "CLING_3": "WEB_ZIP_1",
         "HANG": "WEB_ZIP_1",
+        "HANGING_UPSIDE_DOWN": "WEB_ZIP_1",
         "WALL_RUN_1": "WALK_1",
         "WALL_RUN_2": "WALK_2",
         "WALL_RUN_3": "WALK_3",
@@ -254,11 +246,9 @@ def process_sprite_sheet():
     poses_ts_lines.append("};")
     poses_ts_lines.append("")
 
-    # Save PNG
     grid_img.save('public/spidey-spritesheet.png')
     print("PNG retouched & saved to public/spidey-spritesheet.png")
 
-    # Save TS
     with open('src/sprite-poses.ts', 'w', encoding='utf-8') as f:
         f.write("\n".join(poses_ts_lines))
     print("TypeScript poses map written to src/sprite-poses.ts")

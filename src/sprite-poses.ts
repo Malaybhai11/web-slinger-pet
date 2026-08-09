@@ -92,6 +92,7 @@ export const POSES: Record<string, FramePose> = {
   CLING_2: { x: 550, y: 157, w: 52, h: 106, anchorX: 0.5, anchorY: 0.5, handX: 15, handY: -90, grip: true },
   CLING_3: { x: 550, y: 157, w: 52, h: 106, anchorX: 0.5, anchorY: 0.5, handX: 15, handY: -90, grip: true },
   HANG: { x: 550, y: 157, w: 52, h: 106, anchorX: 0.5, anchorY: 0.5, handX: 15, handY: -90, grip: true },
+  HANGING_UPSIDE_DOWN: { x: 550, y: 157, w: 52, h: 106, anchorX: 0.5, anchorY: 0.5, handX: 15, handY: -90, grip: true },
   WALL_RUN_1: { x: 150, y: 447, w: 83, h: 109, anchorX: 0.5, anchorY: 1.0, handX: 10, handY: -55 },
   WALL_RUN_2: { x: 283, y: 444, w: 73, h: 112, anchorX: 0.5, anchorY: 1.0, handX: 10, handY: -55 },
   WALL_RUN_3: { x: 422, y: 440, w: 52, h: 116, anchorX: 0.5, anchorY: 1.0, handX: 10, handY: -55 },

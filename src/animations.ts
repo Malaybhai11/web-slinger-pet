@@ -1,5 +1,5 @@
 /**
- * animations.ts — full animation library for Spider-Man sprite sheet.
+ * animations.ts — Full animation library and elapsed-time-driven animation controller for Spider-Man.
  */
 
 import type { PoseName } from './sprite.js';
@@ -174,36 +174,41 @@ export const ANIMS: Record<string, AnimationDef> = {
   thwip: { frames: ['WAVE_2', 'WAVE_3'], fps: 6, loop: false },
   flinch: { frames: ['TAKE_DAMAGE_2'], fps: 6, loop: false },
 
-  // ── Surface-aware behavior animations ──────────────────────────
-  // Sitting on a button: subtle breathing alternation between perch/idle
+  // Surface-aware behavior animations
   sit: {
     frames: ['SIT', 'SIT', 'SIT_IDLE', 'SIT', 'SIT', 'SIT_IDLE'],
     fps: 2,
     loop: true,
   },
-  // One-shot personality animation while seated
   sitFidget: {
     frames: ['SIT_IDLE', 'SIT', 'SIT_IDLE', 'SIT', 'SIT_IDLE'],
     fps: 4,
     loop: false,
   },
-  // Crawling along a surface to the left
   crawlLeft: {
     frames: ['WALK_1', 'WALK_MID', 'WALK_2', 'WALK_MID'],
     fps: 8,
     loop: true,
   },
-  // Crawling along a surface to the right
   crawlRight: {
     frames: ['WALK_3', 'WALK_MID', 'WALK_4', 'WALK_MID'],
     fps: 8,
     loop: true,
   },
-  // Quick crouch before launching into backflip
   prepare: {
     frames: ['CROUCH_1', 'CROUCH_2', 'CROUCH_3'],
     fps: 8,
     loop: false,
+  },
+  hanging: {
+    frames: ['HANGING_UPSIDE_DOWN', 'WEB_ZIP_1'],
+    fps: 4,
+    loop: false,
+  },
+  idleHanging: {
+    frames: ['HANGING_UPSIDE_DOWN', 'HANGING_UPSIDE_DOWN', 'WEB_ZIP_1', 'HANGING_UPSIDE_DOWN'],
+    fps: 3,
+    loop: true,
   },
 };
 
@@ -215,32 +220,37 @@ export class AnimationPlayer {
 
   play(animName: string): void {
     if (animName === this.currentAnim && !this.finished) return;
-    this.currentAnim = animName;
+    this.currentAnim = ANIMS[animName] ? animName : 'idle';
     this.frameIndex = 0;
     this.frameTimer = 0;
     this.finished = false;
   }
 
-  update(dt: number): PoseName {
+  update(dtMs: number): PoseName {
     const def = ANIMS[this.currentAnim] || ANIMS.idle;
-    const frameDuration = 1000 / def.fps;
-    this.frameTimer += dt;
+    const frameDuration = 1000 / (def.fps || 4);
+    this.frameTimer += dtMs;
 
-    if (this.frameTimer >= frameDuration) {
+    while (this.frameTimer >= frameDuration) {
       this.frameTimer -= frameDuration;
-      this.frameIndex++;
-
-      if (this.frameIndex >= def.frames.length) {
-        if (def.loop) {
-          this.frameIndex = 0;
-        } else {
-          this.frameIndex = def.frames.length - 1;
-          this.finished = true;
-        }
+      if (this.frameIndex + 1 < def.frames.length) {
+        this.frameIndex++;
+      } else if (def.loop) {
+        this.frameIndex = 0;
+      } else {
+        this.finished = true;
+        break;
       }
     }
 
-    return def.frames[this.frameIndex];
+    const pose = def.frames[this.frameIndex];
+    return pose || 'IDLE';
+  }
+
+  getCurrentPose(): PoseName {
+    const def = ANIMS[this.currentAnim] || ANIMS.idle;
+    const pose = def.frames[this.frameIndex];
+    return pose || 'IDLE';
   }
 
   isFinished(): boolean {
