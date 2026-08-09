@@ -24,7 +24,7 @@ import { CameraFollow } from './camera/follow.js';
 import { CameraShake } from './camera/shake.js';
 import { Animator } from './animation/animator.js';
 import { Particles } from './animation/particles.js';
-import { loadAtlas } from './animation/sprite.js';
+import { loadAtlas, getSpriteMode } from './animation/sprite.js';
 import { Renderer } from './render/renderer.js';
 import { Sounds } from './audio/sounds.js';
 import { Sfx } from './audio/effects.js';
@@ -288,6 +288,7 @@ class HeroSystem implements MoveEvents, ShootEvents {
       ground: hero.ground ? hero.ground.el.tagName : null,
       surfaces: this.map.surfaces.length,
       fps: Math.round(1000 / this.frameMs),
+      sprites: getSpriteMode(),
     };
   }
 }
