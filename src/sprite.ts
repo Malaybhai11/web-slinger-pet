@@ -62,11 +62,6 @@ export function drawSprite(
   customCanvas?: HTMLCanvasElement | null
 ): void {
   const spriteCanvas = customCanvas || SpriteSheetLoader.getInstance().getCanvas();
-  if (!spriteCanvas) {
-    // Canvas is still loading; do not render invalid/empty frame or red placeholder
-    return;
-  }
-
   const p: FramePose = POSES[poseName] || POSES.IDLE;
   if (!p) return;
 
@@ -92,6 +87,19 @@ export function drawSprite(
   const originX = Math.round(-drawW * p.anchorX);
   const originY = Math.round(-drawH * p.anchorY);
 
+  if (!spriteCanvas) {
+    // Render crisp pixel-art Spider-Man placeholder while image loads
+    ctx.fillStyle = '#E52521'; // Suit Red
+    ctx.fillRect(originX + drawW * 0.2, originY + drawH * 0.1, drawW * 0.6, drawH * 0.45);
+    ctx.fillStyle = '#1B1E2B'; // Suit Navy
+    ctx.fillRect(originX + drawW * 0.25, originY + drawH * 0.55, drawW * 0.5, drawH * 0.4);
+    ctx.fillStyle = '#FFFFFF'; // White eyes
+    ctx.fillRect(originX + drawW * 0.3, originY + drawH * 0.2, drawW * 0.15, drawH * 0.12);
+    ctx.fillRect(originX + drawW * 0.55, originY + drawH * 0.2, drawW * 0.15, drawH * 0.12);
+    ctx.restore();
+    return;
+  }
+
   ctx.drawImage(
     spriteCanvas,
     p.x, p.y, p.w, p.h,
@@ -100,3 +108,4 @@ export function drawSprite(
 
   ctx.restore();
 }
+
