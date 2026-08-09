@@ -1,0 +1,40 @@
+/* hero.css — the DOM-aware character's layer + page reaction classes.
+   The page reacts to the hero via these class toggles (see world/interactions.ts). */
+
+#hero-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none; /* clicks pass through to the real DOM */
+}
+
+/* brief glow when the hero lands on / touches an element */
+.hero-glow {
+  outline: 2px solid rgba(242, 246, 255, 0.85);
+  outline-offset: 2px;
+  box-shadow: 0 0 18px rgba(230, 58, 62, 0.55);
+}
+
+/* cards lift while he stands on them */
+.hero-lift {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+}
+
+/* headings do a tiny bounce when he lands on them */
+.hero-bounce {
+  animation: heroBounce 480ms ease-out;
+}
+@keyframes heroBounce {
+  0% { transform: translateY(0); }
+  30% { transform: translateY(-5px); }
+  60% { transform: translateY(2px); }
+  100% { transform: translateY(0); }
+}
+
+/* links underline themselves while he stands on them */
+.hero-underline {
+  text-decoration: underline;
+  text-decoration-color: var(--red, #e63a3e);
+  text-underline-offset: 4px;
+}

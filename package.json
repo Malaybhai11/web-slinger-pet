@@ -1,18 +1,20 @@
 {
   "name": "web-slinger-pet",
-  "version": "1.0.0",
-  "description": "A tiny pixel-art web-slinging pet that lives on your landing page and shoots webs at your buttons.",
+  "version": "2.0.0",
+  "description": "A DOM-aware pixel hero that stands on real elements, swings from buttons to headings, and never floats in empty space.",
   "type": "module",
   "scripts": {
     "dev": "tsc -p tsconfig.json && node server.mjs",
     "build": "tsc -p tsconfig.json",
     "watch": "tsc -p tsconfig.json --watch",
     "preview": "node server.mjs",
+    "sprites": "python3 scripts/generate-sprites.py",
     "qa": "node qa/shoot.mjs"
   },
   "keywords": [
     "pixel-art",
     "canvas",
+    "dom-aware",
     "web-pet",
     "landing-page",
     "typescript",

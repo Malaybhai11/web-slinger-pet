@@ -3,52 +3,103 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>WEBSLINGER — a tiny web pet</title>
-    <meta name="description" content="A pocket-sized pixel hero that lives on your page and shoots webs at your buttons." />
+    <title>WEBSLINGER — an interactive DOM-aware hero</title>
+    <meta name="description" content="A tiny pixel hero that lives ON your page — standing on real buttons, headings and cards, swinging from element to element." />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23050505'/%3E%3Crect x='4' y='3' width='8' height='7' fill='%23E63A3E'/%3E%3Crect x='5' y='5' width='3' height='2' fill='%23F2F6FF'/%3E%3Crect x='9' y='5' width='3' height='2' fill='%23F2F6FF'/%3E%3Crect x='5' y='10' width='6' height='4' fill='%232F5FB3'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/hero.css" />
   </head>
   <body>
     <nav class="nav">
-      <span class="brand" data-web-target>web<span class="accent">slinger</span>.pet</span>
+      <span class="brand">web<span class="accent">slinger</span>.pet</span>
       <div class="nav-links">
-        <a href="#features" data-web-target>features</a>
-        <a href="https://github.com/Malaybhai11/web-slinger-pet" data-web-target>github</a>
+        <a href="#features">features</a>
+        <a href="#gallery">gallery</a>
+        <a href="#contact">contact</a>
+        <a href="https://github.com/Malaybhai11/web-slinger-pet">github</a>
       </div>
     </nav>
 
     <main>
       <section class="hero">
-        <p class="kicker">// a tiny desktop pet for the web</p>
-        <h1 id="hero-title" data-web-target>WEBSLINGER</h1>
+        <p class="kicker">// an interactive dom-aware character</p>
+        <h1 id="hero-title">WEBSLINGER</h1>
         <p class="sub">
-          A pocket-sized pixel hero that lives on your landing page, shoots webs
-          at your buttons, and swings around when it gets bored. Hover a button —
-          it can&rsquo;t resist.
+          He doesn&rsquo;t float over your page — he lives <em>on</em> it. Every button,
+          heading and card is a rooftop. Click any element and he&rsquo;ll web it and
+          swing. Move him with <kbd>A</kbd>/<kbd>D</kbd>, jump with <kbd>Space</kbd>.
         </p>
         <div class="cta">
-          <button class="btn primary" data-web-target>Get started</button>
-          <button class="btn ghost" data-web-target data-swing-trigger>Watch it swing</button>
+          <button class="btn primary" id="cta-main">Get started</button>
+          <button class="btn ghost" id="cta-secondary">Watch him swing</button>
         </div>
-        <p class="hint">psst — move your cursor over a button ↑</p>
+        <p class="hint">click any element — the web sticks to real dom nodes ↑</p>
       </section>
 
       <section class="features" id="features">
         <article class="card">
-          <h2>zero deps</h2>
-          <p>Pure TypeScript + one canvas. No frameworks, no images — the whole hero is drawn pixel by pixel at runtime.</p>
-          <a class="card-link" href="https://github.com/Malaybhai11/web-slinger-pet" data-web-target>read the source →</a>
+          <h2>zero empty space</h2>
+          <p>The golden rule: he can only stand, walk and land on real DOM elements. No surface beneath him? He falls — and swings for the next rooftop.</p>
+          <a class="card-link" href="https://github.com/Malaybhai11/web-slinger-pet">read the source →</a>
         </article>
         <article class="card">
           <h2>real physics</h2>
-          <p>Verlet-integrated web ropes, pendulum swings, squash &amp; stretch landings. It moves like it means it.</p>
-          <a class="card-link" href="#features" data-web-target>see it swing →</a>
+          <p>Fixed-timestep engine at 60fps, semi-implicit Euler, and a true constrained pendulum for swings — tension, damping, terminal velocity and all.</p>
+          <a class="card-link" href="#gallery">see him move →</a>
         </article>
         <article class="card">
-          <h2>drop-in</h2>
-          <p>One script tag, one <code>data-web-target</code> attribute on anything clickable. Your page just got a pet.</p>
-          <a class="card-link" href="#features" data-web-target>adopt it →</a>
+          <h2>page-aware</h2>
+          <p>A MutationObserver watches your DOM. Elements he lands on light up, cards lift, inputs focus. The page reacts to the hero, not the other way round.</p>
+          <a class="card-link" href="#contact">try the form →</a>
         </article>
+      </section>
+
+      <section class="gallery" id="gallery">
+        <h2 class="section-title">rooftops he loves</h2>
+        <div class="shots">
+          <img alt="pixel city rooftop at dusk" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='140'%3E%3Crect width='220' height='140' fill='%23070707'/%3E%3Crect x='18' y='58' width='34' height='82' fill='%23141414'/%3E%3Crect x='60' y='34' width='42' height='106' fill='%231a1a1a'/%3E%3Crect x='110' y='70' width='30' height='70' fill='%23121212'/%3E%3Crect x='148' y='44' width='48' height='96' fill='%23181818'/%3E%3Crect x='66' y='42' width='6' height='6' fill='%23e63a3e'/%3E%3Crect x='80' y='56' width='6' height='6' fill='%232f5fb3'/%3E%3Crect x='156' y='54' width='6' height='6' fill='%23e63a3e'/%3E%3Crect x='172' y='72' width='6' height='6' fill='%232f5fb3'/%3E%3Crect x='24' y='70' width='6' height='6' fill='%232f5fb3'/%3E%3C/svg%3E" />
+          <img alt="web line across a skyline" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='140'%3E%3Crect width='220' height='140' fill='%23090909'/%3E%3Crect x='10' y='80' width='44' height='60' fill='%23161616'/%3E%3Crect x='62' y='52' width='36' height='88' fill='%231b1b1b'/%3E%3Crect x='106' y='90' width='52' height='50' fill='%23131313'/%3E%3Crect x='166' y='40' width='40' height='100' fill='%23191919'/%3E%3Cpath d='M20 20 Q 110 88 200 26' stroke='%23f2f6ff' stroke-width='2' fill='none'/%3E%3Ccircle cx='200' cy='26' r='4' fill='%23e63a3e'/%3E%3Crect x='70' y='62' width='6' height='6' fill='%23e63a3e'/%3E%3Crect x='174' y='50' width='6' height='6' fill='%232f5fb3'/%3E%3C/svg%3E" />
+          <img alt="tiny hero on a ledge" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='140'%3E%3Crect width='220' height='140' fill='%23060606'/%3E%3Crect x='0' y='104' width='220' height='36' fill='%23151515'/%3E%3Crect x='96' y='76' width='8' height='7' fill='%23e63a3e'/%3E%3Crect x='97' y='78' width='3' height='2' fill='%23f2f6ff'/%3E%3Crect x='97' y='84' width='6' height='5' fill='%232f5fb3'/%3E%3Crect x='30' y='112' width='6' height='6' fill='%232f5fb3'/%3E%3Crect x='180' y='118' width='6' height='6' fill='%23e63a3e'/%3E%3Crect x='60' y='120' width='6' height='6' fill='%231d1d1d'/%3E%3C/svg%3E" />
+        </div>
+      </section>
+
+      <section class="contact" id="contact">
+        <h2 class="section-title">leave a message — he&rsquo;ll guard it</h2>
+        <form class="contact-form" onsubmit="return false">
+          <input type="text" placeholder="your name" aria-label="your name" />
+          <select aria-label="reason">
+            <option>just saying hi</option>
+            <option>want this on my site</option>
+            <option>found a bug (he tripped)</option>
+          </select>
+          <textarea rows="4" placeholder="your message" aria-label="your message"></textarea>
+          <button class="btn primary" type="submit">send it</button>
+        </form>
+      </section>
+
+      <section class="lore">
+        <h2>why dom-native?</h2>
+        <p>
+          Most page mascots are stickers — absolutely-positioned GIFs that ignore the
+          page beneath them. This one reads the DOM like a map: headings are ledges,
+          buttons are trampolines, navbars are highways. Layout shifts, lazy-loaded
+          sections, responsive breakpoints — the playground rebuilds itself and he
+          adapts in real time.
+        </p>
+        <h2>the golden rule</h2>
+        <p>
+          Never stand on nothing. Every physics step asks the same question: what real
+          element is under my feet? If the answer is none, gravity wins. It sounds
+          simple, but it&rsquo;s what makes him feel like he belongs to the page instead
+          of being pasted on top of it.
+        </p>
+        <h2>controls</h2>
+        <p>
+          <kbd>A</kbd>/<kbd>D</kbd> or arrows to walk, <kbd>Shift</kbd> to run,
+          <kbd>Space</kbd>/<kbd>W</kbd> to jump, <kbd>S</kbd> to crouch, and click any
+          element to web-swing from it — click again to let go. On touch screens:
+          left/right thirds to move, tap to shoot.
+        </p>
       </section>
     </main>
 
@@ -56,6 +107,6 @@
       <span>thwip thwip · built with too much love by <span class="accent">Bhuro</span> 🥸 for malay</span>
     </footer>
 
-    <script type="module" src="/js/main.js"></script>
+    <script type="module" src="/js/hero/index.js"></script>
   </body>
 </html>
