@@ -143,7 +143,6 @@ export class PhysicsEngine {
     // Follow DOM surface geometry precisely
     body.worldX = s.worldX + s.width * body.surfaceOffsetX;
     body.worldY = s.worldY; // feet at surface top
-    body.vx     = 0;
     body.vy     = 0;
     body.supported = true;
     body.grounded  = true;

@@ -19,6 +19,9 @@
     "zero-dependencies"
   ],
   "license": "MIT",
+  "dependencies": {
+    "webgpu-spritebatch": "^0.1.0"
+  },
   "devDependencies": {
     "typescript": "^7.0.2"
   }

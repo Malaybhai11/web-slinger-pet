@@ -12,6 +12,7 @@
  */
 
 import { drawSprite, DISPLAY_SCALE } from './sprite.js';
+import { WebGPUSpriteRenderer } from './renderer/spritebatch-renderer.js';
 import { Rope } from './rope.js';
 import { AnimationPlayer } from './animations.js';
 import { SurfaceManager, type Surface } from './surfaces.js';
@@ -68,6 +69,9 @@ export type SpideyState =
 export class WebSlingerPet {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
+
+  private webgpuCanvas: HTMLCanvasElement;
+  private webgpuRenderer = new WebGPUSpriteRenderer();
 
   private animFrameId: number | null = null;
   private destroyed = false;
@@ -133,11 +137,20 @@ export class WebSlingerPet {
     }
     (window as any).__petInstance = this;
 
-    // 2. Remove duplicate canvas element if present in DOM
+    // 2. Remove duplicate canvas elements if present in DOM
     const oldCanvas = document.getElementById('web-slinger-canvas');
     if (oldCanvas) {
       oldCanvas.remove();
     }
+    const oldWebGpuCanvas = document.getElementById('web-slinger-webgpu-canvas');
+    if (oldWebGpuCanvas) {
+      oldWebGpuCanvas.remove();
+    }
+
+    this.webgpuCanvas = document.createElement('canvas');
+    this.webgpuCanvas.id = 'web-slinger-webgpu-canvas';
+    this.webgpuCanvas.style.cssText = 'position:fixed;inset:0;z-index:9998;pointer-events:none;';
+    document.body.appendChild(this.webgpuCanvas);
 
     this.canvas = document.createElement('canvas');
     this.canvas.id = 'web-slinger-canvas';
@@ -146,11 +159,16 @@ export class WebSlingerPet {
 
     this.ctx = this.canvas.getContext('2d')!;
 
+    this.webgpuRenderer.init(this.webgpuCanvas).catch((err) => {
+      console.warn('WebGPU SpriteBatch init warning:', err);
+    });
+
     this.resize();
     window.addEventListener('resize', this.onResize, { passive: true });
     window.addEventListener('mousemove', this.onMouseMove, { passive: true });
     window.addEventListener('pointermove', this.onMouseMove as EventListener, { passive: true });
     window.addEventListener('keydown', this.onKeyDown);
+    window.addEventListener('keyup', this.onKeyUp);
 
     requestAnimationFrame(() => {
       this.surfaces.scan();
@@ -180,36 +198,40 @@ export class WebSlingerPet {
     }
   }
 
+  private keysPressed: Set<string> = new Set();
+
   private onKeyDown = (e: KeyboardEvent): void => {
     const target = e.target as HTMLElement;
     if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
       return;
     }
 
-    switch (e.code) {
-      case 'Space':
-        e.preventDefault();
+    this.keysPressed.add(e.code);
+
+    if (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') {
+      e.preventDefault();
+      if (this.body.grounded || this.body.supported || this.state === 'SITTING' || this.state === 'IDLE' || this.state === 'WALK' || this.state === 'WALKING') {
+        this.detachSurface();
+        this.body.vy = PHYS_CONFIG.jumpImpulseY;
+        const moveLeft = this.keysPressed.has('KeyA') || this.keysPressed.has('ArrowLeft');
+        const moveRight = this.keysPressed.has('KeyD') || this.keysPressed.has('ArrowRight');
+        if (moveLeft) this.body.vx = -4;
+        else if (moveRight) this.body.vx = 4;
+        this.enterState('AIRBORNE');
         this.triggerSpiderSense();
-        this.performAction('backflip');
-        break;
-      case 'KeyA':
-      case 'ArrowLeft':
-        this.facing = -1;
-        if (this.body.authority === 'ON_SURFACE') this.enterState('CRAWLING');
-        break;
-      case 'KeyD':
-      case 'ArrowRight':
-        this.facing = 1;
-        if (this.body.authority === 'ON_SURFACE') this.enterState('CRAWLING');
-        break;
-      case 'KeyW':
-      case 'ArrowUp':
-        this.performAction('webZip');
-        break;
-      case 'KeyG':
-        (window as any).SPIDEY_DEBUG = !(window as any).SPIDEY_DEBUG;
-        break;
+      }
+    } else if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+      e.preventDefault();
+      if (this.body.authority === 'ON_SURFACE') {
+        this.enterState('SITTING');
+      }
+    } else if (e.code === 'KeyG') {
+      (window as any).SPIDEY_DEBUG = !(window as any).SPIDEY_DEBUG;
     }
+  };
+
+  private onKeyUp = (e: KeyboardEvent): void => {
+    this.keysPressed.delete(e.code);
   };
 
   triggerSpiderSense(): void {
@@ -315,7 +337,10 @@ export class WebSlingerPet {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('pointermove', this.onMouseMove as EventListener);
     window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('keyup', this.onKeyUp);
     this.surfaces.destroy();
+    this.webgpuRenderer.destroy();
+    this.webgpuCanvas.remove();
     this.canvas.remove();
   }
 
@@ -490,6 +515,13 @@ export class WebSlingerPet {
         this.anim.play('wall_to_ground');
         break;
 
+      case 'AIRBORNE':
+        this.detachSurface();
+        this.anim.play('swing');
+        this.currentRotation = 0;
+        this.fallStartWorldY = this.body.worldY;
+        break;
+
       case 'FALLING':
         this.detachSurface();
         this.anim.play('wall_to_ground');
@@ -582,6 +614,63 @@ export class WebSlingerPet {
 
   private physicsStep(dtSec: number): void {
     this.surfaces.updateRects();
+
+    // WASD keyboard direct movement
+    const moveLeft = this.keysPressed.has('KeyA') || this.keysPressed.has('ArrowLeft');
+    const moveRight = this.keysPressed.has('KeyD') || this.keysPressed.has('ArrowRight');
+
+    if (this.body.authority === 'ON_SURFACE' && this.body.currentSurface) {
+      const s = this.body.currentSurface;
+      if (moveLeft) {
+        this.facing = -1;
+        const dx = -220 * dtSec;
+        this.body.surfaceOffsetX += dx / s.width;
+        this.body.vx = -220;
+        if (this.body.surfaceOffsetX < 0) {
+          this.detachSurface();
+          this.body.vx = -3.5;
+          this.enterState('FALLING');
+        } else {
+          this.body.worldX = s.worldX + s.width * this.body.surfaceOffsetX;
+          if (this.state !== 'WALK' && this.state !== 'WALKING') this.enterState('WALK');
+        }
+      } else if (moveRight) {
+        this.facing = 1;
+        const dx = 220 * dtSec;
+        this.body.surfaceOffsetX += dx / s.width;
+        this.body.vx = 220;
+        if (this.body.surfaceOffsetX > 1) {
+          this.detachSurface();
+          this.body.vx = 3.5;
+          this.enterState('FALLING');
+        } else {
+          this.body.worldX = s.worldX + s.width * this.body.surfaceOffsetX;
+          if (this.state !== 'WALK' && this.state !== 'WALKING') this.enterState('WALK');
+        }
+      } else {
+        this.body.vx = 0;
+        if (this.state === 'WALK' || this.state === 'WALKING' || this.state === 'CRAWLING') {
+          this.enterState('IDLE');
+        }
+      }
+    } else {
+      // AIRBORNE or SWINGING
+      if (moveLeft) {
+        this.facing = -1;
+        this.body.worldX -= 220 * dtSec;
+        this.body.vx = Math.max(-6, this.body.vx - 15 * dtSec * 60);
+        if (this.state !== 'FALLING' && this.state !== 'AIRBORNE' && this.state !== 'SWINGING') {
+          this.enterState('AIRBORNE');
+        }
+      } else if (moveRight) {
+        this.facing = 1;
+        this.body.worldX += 220 * dtSec;
+        this.body.vx = Math.min(6, this.body.vx + 15 * dtSec * 60);
+        if (this.state !== 'FALLING' && this.state !== 'AIRBORNE' && this.state !== 'SWINGING') {
+          this.enterState('AIRBORNE');
+        }
+      }
+    }
 
     if (this.targetSurface && this.targetSurface.isConnected()) {
       const r = this.targetSurface.el ? this.targetSurface.el.getBoundingClientRect() : null;
@@ -726,17 +815,14 @@ export class WebSlingerPet {
   }
 
   private decideIdleAction(ts: number): void {
-    const roll = Math.random();
-    if (roll < 0.35) {
-      this.facing = Math.random() < 0.5 ? 1 : -1;
-      this.enterState('CRAWLING');
-    } else if (roll < 0.55) {
-      this.enterState('WAVING');
-    } else if (roll < 0.70) {
-      this.enterState('STRETCHING');
-    } else {
-      this.anim.play('lookUp');
-      this.nextIdleDecisionTs = ts + 9000;
+    if (this.state === 'IDLE') {
+      // Stand idle for 5-6 seconds, then sit down calmly
+      this.enterState('SITTING');
+      this.anim.play('wall_to_ground');
+      this.nextIdleDecisionTs = ts + 6000;
+    } else if (this.state === 'SITTING') {
+      // Stay sitting calmly
+      this.nextIdleDecisionTs = ts + 6000;
     }
   }
 
@@ -809,7 +895,7 @@ export class WebSlingerPet {
       }
     }
 
-    // E. Sprite Rendering with Rotation
+    // E. Sprite Rendering with Rotation & WebGPU Acceleration
     const pose = this.anim.update(16.6);
 
     let rot = this.currentRotation;
@@ -819,11 +905,23 @@ export class WebSlingerPet {
       rot = Math.sin(this.dizzyAngle) * 0.18;
     }
 
-    drawSprite(ctx, pose, Math.round(sx), Math.round(sy), SCALE, {
-      flip:     this.facing === -1,
-      rotation: rot,
-      squashY:  this.squash,
-    });
+    if (this.webgpuRenderer.active) {
+      this.webgpuCanvas.style.display = 'block';
+      this.webgpuRenderer.beginFrame();
+      this.webgpuRenderer.drawSpidey(pose, Math.round(sx), Math.round(sy), SCALE, {
+        flip:     this.facing === -1,
+        rotation: rot,
+        squashY:  this.squash,
+      });
+      this.webgpuRenderer.endFrame();
+    } else {
+      this.webgpuCanvas.style.display = 'none';
+      drawSprite(ctx, pose, Math.round(sx), Math.round(sy), SCALE, {
+        flip:     this.facing === -1,
+        rotation: rot,
+        squashY:  this.squash,
+      });
+    }
 
     updateParticles(16.6);
     drawParticles(ctx);
@@ -856,6 +954,12 @@ export class WebSlingerPet {
     const dpr = window.devicePixelRatio || 1;
     const w = window.innerWidth;
     const h = window.innerHeight;
+
+    this.webgpuCanvas.width  = Math.round(w * dpr);
+    this.webgpuCanvas.height = Math.round(h * dpr);
+    this.webgpuCanvas.style.width  = `${w}px`;
+    this.webgpuCanvas.style.height = `${h}px`;
+    this.webgpuRenderer.resize();
 
     this.canvas.width  = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);

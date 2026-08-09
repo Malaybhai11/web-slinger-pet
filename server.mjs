@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = fileURLToPath(new URL('./public', import.meta.url));
+const publicRoot = fileURLToPath(new URL('./public', import.meta.url));
+const projectRoot = fileURLToPath(new URL('./', import.meta.url));
 const PORT = Number(process.env.PORT || 3000);
 
 const MIME = {
@@ -12,6 +13,8 @@ const MIME = {
   '.js': 'text/javascript; charset=utf-8',
   '.map': 'application/json',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
   '.json': 'application/json',
@@ -21,11 +24,22 @@ createServer(async (req, res) => {
   try {
     let p = decodeURIComponent(new URL(req.url || '/', 'http://local').pathname);
     if (p === '/') p = '/index.html';
-    const file = normalize(join(root, p));
-    if (!file.startsWith(root)) {
-      res.writeHead(403);
-      return res.end();
+
+    let file;
+    if (p.startsWith('/node_modules/')) {
+      file = normalize(join(projectRoot, p));
+      if (!file.startsWith(projectRoot)) {
+        res.writeHead(403);
+        return res.end();
+      }
+    } else {
+      file = normalize(join(publicRoot, p));
+      if (!file.startsWith(publicRoot)) {
+        res.writeHead(403);
+        return res.end();
+      }
     }
+
     const data = await readFile(file);
     res.writeHead(200, {
       'Content-Type': MIME[extname(file)] || 'application/octet-stream',
