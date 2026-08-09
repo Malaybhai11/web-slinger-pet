@@ -201,13 +201,13 @@ export const ANIMS: Record<string, AnimationDef> = {
     loop: false,
   },
   hanging: {
-    frames: ['HANGING_UPSIDE_DOWN', 'WEB_ZIP_1'],
-    fps: 4,
+    frames: ['UPSIDE_DOWN_HANG_1', 'UPSIDE_DOWN_HANG_2', 'HANG_STRAIGHT_DOWN'],
+    fps: 6,
     loop: false,
   },
   idleHanging: {
-    frames: ['HANGING_UPSIDE_DOWN', 'HANGING_UPSIDE_DOWN', 'WEB_ZIP_1', 'HANGING_UPSIDE_DOWN'],
-    fps: 3,
+    frames: ['HANG_STRAIGHT_DOWN', 'UPSIDE_DOWN_HANG_3', 'HANG_STRAIGHT_DOWN', 'UPSIDE_DOWN_HANG_2'],
+    fps: 4,
     loop: true,
   },
 };

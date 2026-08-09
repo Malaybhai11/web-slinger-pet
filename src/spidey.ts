@@ -367,14 +367,15 @@ export class WebSlingerPet {
       case 'HANGING':
         this.body.authority = 'ON_SURFACE';
         this.anim.play('hanging');
-        this.squash = 0.70; // Squash rebound upon reaching upside-down hanging position
+        this.currentRotation = 0;
+        this.squash = 0.70;
         triggerShake(3, 0.88);
         break;
 
       case 'IDLE_HANGING':
         this.body.authority = 'ON_SURFACE';
         this.anim.play('idleHanging');
-        this.currentRotation = Math.PI; // Inverted upside-down (180 degrees)
+        this.currentRotation = 0; // Source sprite artwork is natively upside-down
         this.squash = 1.0;
         break;
 
@@ -508,16 +509,16 @@ export class WebSlingerPet {
 
     if (this.state === 'IDLE_HANGING' || this.state === 'HANGING') {
       // Positional Authority: Locked to button anchor in document space
-      const sway = Math.sin(performance.now() * 0.002) * 0.08;
-      const bob  = Math.sin(performance.now() * 0.003) * 2.5;
+      const sway = Math.sin(performance.now() * 0.002) * 0.06;
+      const bob  = Math.sin(performance.now() * 0.003) * 2.0;
 
-      this.body.worldX = this.targetAnchorWorldX + Math.sin(sway) * 12;
+      this.body.worldX = this.targetAnchorWorldX + Math.sin(sway) * 10;
       this.body.worldY = this.targetAnchorWorldY + this.hangingRopeLen + bob;
       this.body.vx     = 0;
       this.body.vy     = 0;
       this.body.supported = true;
       this.body.grounded  = true;
-      this.currentRotation = Math.PI + sway; // Upside down rotation with gentle sway
+      this.currentRotation = sway; // Native upside-down pose with gentle sway
     } else if (this.body.authority === 'ON_SURFACE') {
       const ok = this.physics.updateSurfacePosition(this.body);
       if (!ok) this.enterState('FALLING');
