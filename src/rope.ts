@@ -1,5 +1,6 @@
 /**
  * rope.ts — verlet-integrated web rope for pendulum swings.
+ * Enhanced with gradient rendering, wind, and variable stiffness.
  */
 
 export interface RopePoint {
@@ -22,10 +23,8 @@ export class Rope {
 
   pin(x: number, y: number): void {
     const p = this.points[0];
-    p.x = x;
-    p.y = y;
-    p.px = x;
-    p.py = y;
+    p.x = x; p.y = y;
+    p.px = x; p.py = y;
   }
 
   /** kick the loose end with a velocity */
@@ -35,7 +34,7 @@ export class Rope {
     e.py = e.y - vy;
   }
 
-  step(gravity: number, damping = 0.995, iterations = 4): void {
+  step(gravity: number, damping = 0.995, iterations = 4, wind = 0): void {
     // verlet integration (skip the pinned head)
     for (let i = 1; i < this.points.length; i++) {
       const p = this.points[i];
@@ -43,7 +42,7 @@ export class Rope {
       const vy = (p.y - p.py) * damping;
       p.px = p.x;
       p.py = p.y;
-      p.x += vx;
+      p.x += vx + wind;
       p.y += vy + gravity;
     }
     // distance constraints
@@ -81,14 +80,26 @@ export class Rope {
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
-    ctx.strokeStyle = '#F2F6FF';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(this.points[0].x, this.points[0].y);
-    for (let i = 1; i < this.points.length; i++) {
-      ctx.lineTo(this.points[i].x, this.points[i].y);
+    const pts = this.points;
+    const n = pts.length;
+
+    // gradient: brighter near anchor, dimmer near pet
+    for (let i = 0; i < n - 1; i++) {
+      const t = i / (n - 1);
+      const alpha = 0.3 + 0.7 * (1 - t); // brighter at top
+      ctx.strokeStyle = `rgba(242,246,255,${alpha})`;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(pts[i].x, pts[i].y);
+      ctx.lineTo(pts[i + 1].x, pts[i + 1].y);
+      ctx.stroke();
     }
-    ctx.stroke();
+
+    // tiny nodes at segment joints for texture
+    ctx.fillStyle = 'rgba(242,246,255,0.5)';
+    for (let i = 1; i < n - 1; i++) {
+      ctx.fillRect(Math.round(pts[i].x) - 1, Math.round(pts[i].y) - 1, 2, 2);
+    }
   }
 }
