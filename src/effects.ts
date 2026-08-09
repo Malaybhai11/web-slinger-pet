@@ -14,7 +14,7 @@ interface Particle {
 }
 
 const POOL: Particle[] = [];
-const MAX_PARTICLES = 200;
+const MAX_PARTICLES = 150;
 
 function alloc(): Particle | null {
   for (const p of POOL) if (!p.alive) return p;
@@ -42,7 +42,7 @@ export function emit(n: number, base: EmitOpts): void {
     p.y = base.y;
     p.vx = (base.vx ?? 0) + (base.vxRange ?? 0) * (Math.random() * 2 - 1);
     p.vy = (base.vy ?? 0) + (base.vyRange ?? 0) * (Math.random() * 2 - 1);
-    p.life = (base.life ?? 500) + (base.lifeRange ?? 0) * (Math.random() * 2 - 1);
+    p.life = (base.life ?? 400) + (base.lifeRange ?? 0) * (Math.random() * 2 - 1);
     p.maxLife = p.life;
     p.size = (base.size ?? 2) + (base.sizeRange ?? 0) * (Math.random() * 2 - 1);
     p.color = base.color ?? '#F2F6FF';
@@ -60,12 +60,13 @@ export function updateParticles(dt: number): void {
     p.life -= dt;
     if (p.life <= 0) { p.alive = false; continue; }
     const t = p.life / p.maxLife;
-    p.alpha = t * (p.alpha > 0 ? 1 : 0);
+    p.alpha = t;
     p.size *= (0.998 + 0.002 * t);
   }
 }
 
 export function drawParticles(ctx: CanvasRenderingContext2D): void {
+  ctx.save();
   for (const p of POOL) {
     if (!p.alive || p.alpha < 0.01) continue;
     ctx.globalAlpha = p.alpha;
@@ -73,7 +74,7 @@ export function drawParticles(ctx: CanvasRenderingContext2D): void {
     const s = Math.max(1, Math.round(p.size));
     ctx.fillRect(Math.round(p.x), Math.round(p.y), s, s);
   }
-  ctx.globalAlpha = 1;
+  ctx.restore();
 }
 
 /* ── Screen Shake ─────────────────────────────────────────── */
@@ -103,6 +104,7 @@ export function drawShadow(
   x: number, groundY: number, petY: number,
   scaleX: number,
 ): void {
+  ctx.save();
   const height = Math.max(0, groundY - petY);
   const maxH = 200;
   const alpha = Math.max(0.04, 0.2 - (height / maxH) * 0.16);
@@ -112,6 +114,7 @@ export function drawShadow(
   ctx.beginPath();
   ctx.ellipse(Math.round(x), Math.round(groundY), w, Math.max(2, h), 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
 }
 
 /* ── Web Line Glow ────────────────────────────────────────── */
@@ -121,13 +124,14 @@ export function drawWebLine(
   x0: number, y0: number, x1: number, y1: number,
   progress: number,
 ): void {
+  ctx.save();
   const ex = x0 + (x1 - x0) * progress;
   const ey = y0 + (y1 - y0) * progress;
   const mx = (x0 + ex) / 2;
   const my = (y0 + ey) / 2 + 5;
 
   ctx.strokeStyle = 'rgba(242,246,255,0.12)';
-  ctx.lineWidth = 8;
+  ctx.lineWidth = 6;
   ctx.lineCap = 'round';
   ctx.beginPath();
   ctx.moveTo(x0, y0);
@@ -140,6 +144,7 @@ export function drawWebLine(
   ctx.moveTo(x0, y0);
   ctx.quadraticCurveTo(mx, my, ex, ey);
   ctx.stroke();
+  ctx.restore();
 }
 
 /* ── SPIDEY_DEBUG HUD Overlay ──────────────────────────────── */

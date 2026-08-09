@@ -1,23 +1,17 @@
 /**
- * spidey.ts — Spider-Man Upside-Down Button Hanging Interaction System.
+ * spidey.ts — Spider-Man Upside-Down Button Hanging Interaction & Rendering Engine.
  *
- * STATE MACHINE FLOW
- * ------------------
- * IDLE → TARGETING → WEB_ATTACHING → SWINGING → HANGING → IDLE_HANGING
- *
- * When ANY button/card on the webpage is clicked:
- * 1. Spider-Man detects the clicked button.
- * 2. Moves toward the button in a natural acrobatic arc (no instant teleporting!).
- * 3. Deploys a web line attached exactly to the button's bottom anchor.
- * 4. Swings underneath the button, smoothly rotating to an upside-down orientation (Math.PI).
- * 5. Settles into IDLE_HANGING directly beneath the button, matching the reference image:
- *    - Head pointing downward
- *    - Feet connected to the web line running up to the button
- *    - Continuous subtle pendulum sway & vertical bobbing
- *    - Positional authority locks to the button during scroll/resize.
+ * RENDERING SAFETY GUARANTEES
+ * ---------------------------
+ * 1. Single Authoritative Loop: Exactly 1 requestAnimationFrame loop.
+ * 2. Absolute Canvas Reset: ctx.setTransform(1,0,0,1,0,0), ctx.globalCompositeOperation = 'source-over',
+ *    ctx.clearRect(0,0,width,height) executed EVERY frame. Zero trail/ghost accumulation.
+ * 3. Context Guarding: All draw calls wrapped in ctx.save() / ctx.restore().
+ * 4. DevicePixelRatio Handling: Crisp high-DPI rendering with imageSmoothingEnabled = false.
+ * 5. IMMOVABLE DOM UI: Page UI elements are 100% read-only.
  */
 
-import { drawSprite, getHandPosition, DISPLAY_SCALE, type PoseName } from './sprite.js';
+import { drawSprite, DISPLAY_SCALE } from './sprite.js';
 import { Rope } from './rope.js';
 import { AnimationPlayer } from './animations.js';
 import { SurfaceManager, type Surface } from './surfaces.js';
@@ -84,7 +78,7 @@ export class WebSlingerPet {
   private anim = new AnimationPlayer();
 
   private state: SpideyState = 'FALLING';
-  private stateT = 0; // ms in current state
+  private stateT = 0;
   private facing: 1 | -1 = 1;
 
   // Target Button & Web Anchor
@@ -94,7 +88,7 @@ export class WebSlingerPet {
 
   // Web Rope & Hanging Physics
   private rope: Rope | null = null;
-  private hangingRopeLen = 90; // px distance below button when hanging
+  private hangingRopeLen = 90;
   private currentRotation = 0;
 
   // Fall tracking
@@ -117,10 +111,17 @@ export class WebSlingerPet {
   private fpsTimer = 0;
 
   constructor() {
+    // 1. Destroy existing pet instance if present
     if ((window as any).__petInstance) {
       (window as any).__petInstance.destroy();
     }
     (window as any).__petInstance = this;
+
+    // 2. Remove duplicate canvas element if present in DOM
+    const oldCanvas = document.getElementById('web-slinger-canvas');
+    if (oldCanvas) {
+      oldCanvas.remove();
+    }
 
     this.canvas = document.createElement('canvas');
     this.canvas.id = 'web-slinger-canvas';
@@ -128,7 +129,6 @@ export class WebSlingerPet {
     document.body.appendChild(this.canvas);
 
     this.ctx = this.canvas.getContext('2d')!;
-    this.ctx.imageSmoothingEnabled = false;
 
     this.resize();
     window.addEventListener('resize', this.onResize, { passive: true });
@@ -144,7 +144,10 @@ export class WebSlingerPet {
   }
 
   private startLoop(): void {
-    if (this.animFrameId !== null) cancelAnimationFrame(this.animFrameId);
+    if (this.animFrameId !== null) {
+      cancelAnimationFrame(this.animFrameId);
+      this.animFrameId = null;
+    }
     this.lastTs = performance.now();
     this.animFrameId = requestAnimationFrame(this.tick);
   }
@@ -160,8 +163,6 @@ export class WebSlingerPet {
       this.enterState('FALLING');
     }
   }
-
-  // ── Keyboard Controls ──────────────────────────────────────────────────────
 
   private onKeyDown = (e: KeyboardEvent): void => {
     const target = e.target as HTMLElement;
@@ -199,10 +200,7 @@ export class WebSlingerPet {
     this.spiderSenseT = 600;
   }
 
-  // ── Primary Interaction: Click ANY Button ─────────────────────────────────
-
   reactToInteraction(el: HTMLElement): void {
-    // Direct click on Spider-Man himself
     const sx = this.screenX();
     const sy = this.screenY();
     if (Math.abs(this.mouseX - sx) < 40 && Math.abs(this.mouseY - sy) < 60) {
@@ -222,10 +220,9 @@ export class WebSlingerPet {
 
     this.targetSurface = target;
     this.targetAnchorWorldX = this.surfaces.centerX(target);
-    this.targetAnchorWorldY = target.worldY + target.height; // Web anchor at bottom of clicked button
+    this.targetAnchorWorldY = target.worldY + target.height;
     this.facing = this.targetAnchorWorldX >= this.body.worldX ? 1 : -1;
 
-    // Trigger state flow: TARGETING -> WEB_ATTACHING -> SWINGING -> HANGING -> IDLE_HANGING
     this.enterState('TARGETING');
   }
 
@@ -294,7 +291,10 @@ export class WebSlingerPet {
 
   destroy(): void {
     this.destroyed = true;
-    if (this.animFrameId !== null) cancelAnimationFrame(this.animFrameId);
+    if (this.animFrameId !== null) {
+      cancelAnimationFrame(this.animFrameId);
+      this.animFrameId = null;
+    }
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('pointermove', this.onMouseMove as EventListener);
@@ -323,8 +323,6 @@ export class WebSlingerPet {
     this.body.authority       = 'ON_SURFACE';
   }
 
-  // ── State Machine Transitions ─────────────────────────────────────────────
-
   private enterState(nextState: SpideyState): void {
     this.state  = nextState;
     this.stateT = 0;
@@ -341,7 +339,7 @@ export class WebSlingerPet {
 
       case 'TARGETING':
         this.detachSurface();
-        this.anim.play('prepare'); // Crouch/prepare pose before launch
+        this.anim.play('prepare');
         break;
 
       case 'WEB_ATTACHING':
@@ -370,7 +368,7 @@ export class WebSlingerPet {
       case 'IDLE_HANGING':
         this.body.authority = 'ON_SURFACE';
         this.anim.play('idleHanging');
-        this.currentRotation = 0; // Source sprite artwork is natively upside-down
+        this.currentRotation = 0;
         this.squash = 1.0;
         break;
 
@@ -493,7 +491,6 @@ export class WebSlingerPet {
   private physicsStep(dtSec: number): void {
     this.surfaces.updateRects();
 
-    // Dynamically update target anchor position if surface moves/scrolls
     if (this.targetSurface && this.targetSurface.isConnected()) {
       const r = this.targetSurface.el ? this.targetSurface.el.getBoundingClientRect() : null;
       if (r) {
@@ -503,7 +500,6 @@ export class WebSlingerPet {
     }
 
     if (this.state === 'IDLE_HANGING' || this.state === 'HANGING') {
-      // Positional Authority: Locked to button anchor in document space
       const sway = Math.sin(performance.now() * 0.002) * 0.06;
       const bob  = Math.sin(performance.now() * 0.003) * 2.0;
 
@@ -513,7 +509,7 @@ export class WebSlingerPet {
       this.body.vy     = 0;
       this.body.supported = true;
       this.body.grounded  = true;
-      this.currentRotation = sway; // Native upside-down pose with gentle sway
+      this.currentRotation = sway;
     } else if (this.body.authority === 'ON_SURFACE') {
       const ok = this.physics.updateSurfacePosition(this.body);
       if (!ok) this.enterState('FALLING');
@@ -529,8 +525,6 @@ export class WebSlingerPet {
       }
     }
   }
-
-  // ── High-Level State Machine Logic ────────────────────────────────────────
 
   private updateStateLogic(dtMs: number, ts: number): void {
     switch (this.state) {
@@ -557,7 +551,6 @@ export class WebSlingerPet {
         this.body.worldX = end.x;
         this.body.worldY = end.y + window.scrollY;
 
-        // Smooth rotation interpolation toward upside-down (Math.PI)
         const targetRot = Math.PI;
         this.currentRotation += (targetRot - this.currentRotation) * 0.08;
 
@@ -575,7 +568,6 @@ export class WebSlingerPet {
         break;
 
       case 'IDLE_HANGING':
-        // Continuous subtle upside-down hanging idle
         this.squash = 1.0 + Math.sin(ts * 0.002) * 0.015;
         break;
 
@@ -660,35 +652,49 @@ export class WebSlingerPet {
 
   private render(alpha: number): void {
     const ctx = this.ctx;
+    const dpr = window.devicePixelRatio || 1;
+
+    // 1. ABSOLUTE RESET OF CONTEXT TRANSFORM MATRIX & COMPOSITING MODE
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+
+    // 2. CLEAR FULL CANVAS RESOLUTION (devicePixelRatio scaled)
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // 3. Scale context for High-DPI and preserve hard pixel edges
+    ctx.scale(dpr, dpr);
+    ctx.imageSmoothingEnabled = false;
+
+    // 4. Guard Frame Render with Save / Restore
+    ctx.save();
 
     applyShake(ctx, 16.6);
 
     const sx = this.screenX();
     const sy = this.screenY();
 
-    // 1. Shadow (only when grounded on horizontal surface)
+    // A. Shadow (only when grounded on horizontal surface)
     if (this.state === 'SITTING' || this.state === 'CRAWLING' || this.state === 'WALKING' || this.state === 'LANDING') {
       const floor = this.surfaces.findFloorBelow(this.body.worldX, this.body.worldY + 1, 1);
       const shadowY = floor ? floor.worldY - window.scrollY : window.innerHeight;
       drawShadow(ctx, sx, shadowY, sy, SCALE);
     }
 
-    // 2. Web Line to Target Button Anchor
+    // B. Web Line to Target Button Anchor
     if (this.state === 'IDLE_HANGING' || this.state === 'HANGING' || this.state === 'SWINGING' || this.state === 'WEB_ATTACHING') {
       const anchorSy = this.targetAnchorWorldY - window.scrollY;
 
       if (this.rope) {
         this.rope.draw(ctx);
       } else {
-        // Draw crisp dynamic web line connecting button anchor -> Spider-Man's feet/attachment point
         const progress = this.state === 'WEB_ATTACHING' ? Math.min(1.0, this.stateT / 120) : 1.0;
         const feetY = this.state === 'IDLE_HANGING' || this.state === 'HANGING' ? sy - 40 : sy - 15;
         drawWebLine(ctx, this.targetAnchorWorldX, anchorSy, sx, feetY, progress);
       }
     }
 
-    // 3. Spider-Sense Electric Spark (⚡)
+    // C. Spider-Sense Electric Spark (⚡)
     if (this.spiderSenseT > 0) {
       ctx.save();
       ctx.fillStyle = '#FFD700';
@@ -699,7 +705,7 @@ export class WebSlingerPet {
       ctx.restore();
     }
 
-    // 4. Dizzy Stars
+    // D. Dizzy Stars
     if (this.state === 'DIZZY') {
       const n = 4, r = 20, t = performance.now() * 0.002;
       ctx.fillStyle = '#FFD700';
@@ -711,7 +717,7 @@ export class WebSlingerPet {
       }
     }
 
-    // 5. Sprite Rendering with Rotation
+    // E. Sprite Rendering with Rotation
     const pose = this.anim.update(16.6);
 
     let rot = this.currentRotation;
@@ -730,7 +736,7 @@ export class WebSlingerPet {
     updateParticles(16.6);
     drawParticles(ctx);
 
-    // 6. Diagnostic Debug Overlay (if ?debug=1 or window.SPIDEY_DEBUG = true)
+    // F. Diagnostic Debug Overlay (ONLY if window.SPIDEY_DEBUG is true)
     if ((window as any).SPIDEY_DEBUG) {
       drawDebugOverlay(ctx, {
         state:     this.state,
@@ -745,20 +751,26 @@ export class WebSlingerPet {
         fps:       this.fps,
       });
     }
+
+    ctx.restore();
   }
 
-  // ── Event Handlers ─────────────────────────────────────────────────────────
-
   private onResize = (): void => {
-    this.canvas.width  = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-    this.ctx.imageSmoothingEnabled = false;
+    this.resize();
     this.surfaces.scan();
   };
 
   private resize(): void {
-    this.canvas.width  = window.innerWidth;
-    this.canvas.height = window.innerHeight;
+    const dpr = window.devicePixelRatio || 1;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    this.canvas.width  = Math.round(w * dpr);
+    this.canvas.height = Math.round(h * dpr);
+    this.canvas.style.width  = `${w}px`;
+    this.canvas.style.height = `${h}px`;
+
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.imageSmoothingEnabled = false;
   }
 

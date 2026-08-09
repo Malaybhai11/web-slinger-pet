@@ -80,13 +80,14 @@ export class Rope {
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
+    ctx.save();
     const pts = this.points;
     const n = pts.length;
 
     // gradient: brighter near anchor, dimmer near pet
     for (let i = 0; i < n - 1; i++) {
       const t = i / (n - 1);
-      const alpha = 0.3 + 0.7 * (1 - t); // brighter at top
+      const alpha = 0.3 + 0.7 * (1 - t);
       ctx.strokeStyle = `rgba(242,246,255,${alpha})`;
       ctx.lineWidth = 2;
       ctx.lineCap = 'round';
@@ -101,5 +102,6 @@ export class Rope {
     for (let i = 1; i < n - 1; i++) {
       ctx.fillRect(Math.round(pts[i].x) - 1, Math.round(pts[i].y) - 1, 2, 2);
     }
+    ctx.restore();
   }
 }
