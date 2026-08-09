@@ -1,7 +1,6 @@
 /**
  * animator.ts — state → frame mapping and timing (PRD §3.1).
- * The active animation set + fps come from the sprite loader (24fps with the
- * real art, 11fps with the pixel fallback). Positions interpolate at 60fps.
+ * Animation advances at the rig's 24fps; positions interpolate at 60fps.
  */
 
 import { getAnims, getAnimFps } from './sprite.js';
@@ -12,7 +11,7 @@ const NON_LOOP = new Set(['jump', 'land', 'crouch', 'cling']);
 const STATE_ANIM: Record<HeroState, string> = {
   idle: 'idle',
   walking: 'walk',
-  running: 'walk',
+  running: 'run',
   jumping: 'jump',
   falling: 'fall',
   swinging: 'swing',
