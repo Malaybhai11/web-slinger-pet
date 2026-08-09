@@ -1,10 +1,10 @@
 /**
  * animator.ts — state → frame mapping and timing (PRD §3.1).
- * Animation advances at ~11fps (deliberate retro feel); positions are
- * interpolated by the physics/render loop at 60fps.
+ * The active animation set + fps come from the sprite loader (24fps with the
+ * real art, 11fps with the pixel fallback). Positions interpolate at 60fps.
  */
 
-import { ANIMS, ANIM_FPS } from './sprite-data.js';
+import { getAnims, getAnimFps } from './sprite.js';
 import type { HeroState } from '../character/state.js';
 
 const NON_LOOP = new Set(['jump', 'land', 'crouch', 'cling']);
@@ -38,10 +38,10 @@ export class Animator {
   }
 
   update(dtMs: number): void {
-    this.t += dtMs * this.speed;
-    const frameMs = 1000 / ANIM_FPS;
-    const seq = ANIMS[this.anim];
+    const seq = getAnims()[this.anim];
     if (!seq) return;
+    this.t += dtMs * this.speed;
+    const frameMs = 1000 / getAnimFps();
     while (this.t >= frameMs) {
       this.t -= frameMs;
       if (this.idx < seq.length - 1) this.idx++;
@@ -50,7 +50,8 @@ export class Animator {
   }
 
   frame(): string {
-    const seq = ANIMS[this.anim];
+    const seq = getAnims()[this.anim];
+    if (!seq) return 'idle0';
     return seq[Math.min(this.idx, seq.length - 1)];
   }
 }
