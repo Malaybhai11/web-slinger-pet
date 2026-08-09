@@ -1,5 +1,5 @@
 /**
- * animations.ts — Full animation library and elapsed-time-driven animation controller for Spider-Man.
+ * animations.ts -- Full animation definitions for all 16 Spider-Man animation groups.
  */
 
 import type { PoseName } from './sprite.js';
@@ -11,206 +11,70 @@ export interface AnimationDef {
 }
 
 export const ANIMS: Record<string, AnimationDef> = {
-  // Idle hero breathing
-  idle: {
-    frames: ['IDLE_1', 'IDLE_2', 'IDLE_3', 'IDLE_4'],
-    fps: 4,
-    loop: true,
-  },
-
-  // Looking around
-  lookUp: {
-    frames: ['LOOK_UP_1', 'LOOK_UP_2', 'LOOK_UP_3'],
-    fps: 4,
-    loop: false,
-  },
-  lookDown: {
-    frames: ['LOOK_DOWN_1', 'LOOK_DOWN_2', 'LOOK_DOWN_3'],
-    fps: 4,
-    loop: false,
-  },
-
-  // Wave & Stretch
-  wave: {
-    frames: ['WAVE_1', 'WAVE_2', 'WAVE_3', 'WAVE_2'],
-    fps: 5,
-    loop: true,
-  },
-  stretch: {
-    frames: ['STRETCH_1', 'STRETCH_2', 'STRETCH_3'],
-    fps: 4,
-    loop: false,
-  },
-
-  // Locomotion
-  walk: {
-    frames: ['WALK_1', 'WALK_2', 'WALK_3', 'WALK_4', 'WALK_5', 'WALK_6'],
-    fps: 8,
-    loop: true,
-  },
-  run: {
-    frames: ['RUN_1', 'RUN_2', 'RUN_3', 'RUN_4', 'RUN_5', 'RUN_6'],
-    fps: 12,
-    loop: true,
-  },
-  crouch: {
-    frames: ['CROUCH_1', 'CROUCH_2', 'CROUCH_3'],
-    fps: 5,
-    loop: false,
-  },
-
-  // Acrobatics
-  backflip: {
-    frames: ['BACKFLIP_1', 'BACKFLIP_2', 'BACKFLIP_3', 'BACKFLIP_4'],
-    fps: 10,
-    loop: false,
-  },
-  jump: {
-    frames: ['JUMP_1', 'JUMP_2', 'JUMP_3'],
-    fps: 6,
-    loop: false,
-  },
-  fall: {
-    frames: ['FALL_1', 'FALL_2', 'FALL_3'],
-    fps: 6,
-    loop: true,
-  },
-  land: {
-    frames: ['LAND_1', 'LAND_2', 'LAND_3', 'LAND_4'],
-    fps: 10,
-    loop: false,
-  },
-
-  // Status effects
-  dizzy: {
-    frames: ['DIZZY_1', 'DIZZY_2', 'DIZZY_3', 'DIZZY_4'],
-    fps: 6,
-    loop: true,
-  },
-  victory: {
-    frames: ['VICTORY_1', 'VICTORY_2', 'VICTORY_3'],
-    fps: 6,
-    loop: false,
-  },
-
-  // Web Slinging & Wall Mechanics
-  swing: {
-    frames: ['SWING_1', 'SWING_2', 'SWING_3', 'SWING_4', 'SWING_5', 'SWING_6', 'SWING_7', 'SWING_8'],
-    fps: 10,
-    loop: true,
-  },
-  cling: {
-    frames: ['CLING_1', 'CLING_2', 'CLING_3'],
-    fps: 4,
-    loop: true,
-  },
-  wallRun: {
-    frames: ['WALL_RUN_1', 'WALL_RUN_2', 'WALL_RUN_3', 'WALL_RUN_4'],
-    fps: 10,
-    loop: true,
-  },
-
-  // Web Combat
-  webShoot: {
-    frames: ['WEB_SHOOT_1', 'WEB_SHOOT_2', 'WEB_SHOOT_3', 'WEB_SHOOT_4'],
-    fps: 10,
-    loop: false,
-  },
-  aim: {
-    frames: ['WEB_SHOOT_1', 'WEB_SHOOT_2'],
-    fps: 8,
-    loop: false,
-  },
-  shoot: {
-    frames: ['WEB_SHOOT_3', 'WEB_SHOOT_4'],
-    fps: 10,
-    loop: false,
-  },
-  webZip: {
-    frames: ['WEB_ZIP_1', 'WEB_ZIP_2', 'WEB_ZIP_3', 'WEB_ZIP_4'],
-    fps: 12,
-    loop: true,
-  },
-  zip: {
-    frames: ['WEB_ZIP_1', 'WEB_ZIP_2', 'WEB_ZIP_3', 'WEB_ZIP_4'],
-    fps: 12,
-    loop: true,
-  },
-  perch: {
-    frames: ['PERCH_1', 'PERCH_2', 'PERCH_3'],
-    fps: 4,
-    loop: true,
-  },
-  hang: {
-    frames: ['PERCH_1', 'PERCH_2', 'PERCH_3'],
-    fps: 4,
-    loop: true,
-  },
-
-  // Combat & Damage
-  attack: {
-    frames: ['ATTACK_1', 'ATTACK_2', 'ATTACK_3', 'ATTACK_4'],
-    fps: 12,
-    loop: false,
-  },
-  roll: {
-    frames: ['ROLL_1', 'ROLL_2', 'ROLL_3', 'ROLL_4'],
-    fps: 12,
-    loop: false,
-  },
-  takeDamage: {
-    frames: ['TAKE_DAMAGE_1', 'TAKE_DAMAGE_2', 'TAKE_DAMAGE_3', 'TAKE_DAMAGE_4'],
-    fps: 10,
-    loop: false,
-  },
-  dead: {
-    frames: ['DEAD_1', 'DEAD_2', 'DEAD_3'],
-    fps: 4,
-    loop: false,
-  },
-
-  // Legacy fallback aliases
-  leap: { frames: ['JUMP_2', 'FALL_2'], fps: 6, loop: false },
-  thwip: { frames: ['WAVE_2', 'WAVE_3'], fps: 6, loop: false },
-  flinch: { frames: ['TAKE_DAMAGE_2'], fps: 6, loop: false },
-
-  // Surface-aware behavior animations
-  sit: {
-    frames: ['SIT', 'SIT', 'SIT_IDLE', 'SIT', 'SIT', 'SIT_IDLE'],
-    fps: 2,
-    loop: true,
-  },
-  sitFidget: {
-    frames: ['SIT_IDLE', 'SIT', 'SIT_IDLE', 'SIT', 'SIT_IDLE'],
-    fps: 4,
-    loop: false,
-  },
-  crawlLeft: {
-    frames: ['WALK_1', 'WALK_MID', 'WALK_2', 'WALK_MID'],
-    fps: 8,
-    loop: true,
-  },
-  crawlRight: {
-    frames: ['WALK_3', 'WALK_MID', 'WALK_4', 'WALK_MID'],
-    fps: 8,
-    loop: true,
-  },
-  prepare: {
-    frames: ['CROUCH_1', 'CROUCH_2', 'CROUCH_3'],
-    fps: 8,
-    loop: false,
-  },
-  hanging: {
-    frames: ['UPSIDE_DOWN_HANG_1', 'UPSIDE_DOWN_HANG_2', 'HANG_STRAIGHT_DOWN'],
-    fps: 6,
-    loop: false,
-  },
-  idleHanging: {
-    frames: ['HANG_STRAIGHT_DOWN', 'UPSIDE_DOWN_HANG_3', 'HANG_STRAIGHT_DOWN', 'UPSIDE_DOWN_HANG_2'],
-    fps: 4,
-    loop: true,
-  },
+  idle: { frames: ['IDLE_1', 'IDLE_2', 'IDLE_3', 'IDLE_4', 'IDLE_5'], fps: 4, loop: true },
+  IDLE: { frames: ['IDLE_1', 'IDLE_2', 'IDLE_3', 'IDLE_4', 'IDLE_5'], fps: 4, loop: true },
+  walk: { frames: ['WALK_1', 'WALK_2', 'WALK_3', 'WALK_4', 'WALK_5', 'WALK_6', 'WALK_7'], fps: 8, loop: true },
+  WALK: { frames: ['WALK_1', 'WALK_2', 'WALK_3', 'WALK_4', 'WALK_5', 'WALK_6', 'WALK_7'], fps: 8, loop: true },
+  run: { frames: ['RUN_1', 'RUN_2', 'RUN_3', 'RUN_4'], fps: 12, loop: true },
+  RUN: { frames: ['RUN_1', 'RUN_2', 'RUN_3', 'RUN_4'], fps: 12, loop: true },
+  approach_wall: { frames: ['APPROACH_WALL_1', 'APPROACH_WALL_2', 'APPROACH_WALL_3', 'APPROACH_WALL_4', 'APPROACH_WALL_5', 'APPROACH_WALL_6'], fps: 10, loop: false },
+  APPROACH_WALL: { frames: ['APPROACH_WALL_1', 'APPROACH_WALL_2', 'APPROACH_WALL_3', 'APPROACH_WALL_4', 'APPROACH_WALL_5', 'APPROACH_WALL_6'], fps: 10, loop: false },
+  ground_to_wall: { frames: ['GROUND_TO_WALL_1', 'GROUND_TO_WALL_2', 'GROUND_TO_WALL_3', 'GROUND_TO_WALL_4', 'GROUND_TO_WALL_5', 'GROUND_TO_WALL_6', 'GROUND_TO_WALL_7', 'GROUND_TO_WALL_8', 'GROUND_TO_WALL_9', 'GROUND_TO_WALL_10', 'GROUND_TO_WALL_11', 'GROUND_TO_WALL_12', 'GROUND_TO_WALL_13', 'GROUND_TO_WALL_14'], fps: 10, loop: false },
+  GROUND_TO_WALL: { frames: ['GROUND_TO_WALL_1', 'GROUND_TO_WALL_2', 'GROUND_TO_WALL_3', 'GROUND_TO_WALL_4', 'GROUND_TO_WALL_5', 'GROUND_TO_WALL_6', 'GROUND_TO_WALL_7', 'GROUND_TO_WALL_8', 'GROUND_TO_WALL_9', 'GROUND_TO_WALL_10', 'GROUND_TO_WALL_11', 'GROUND_TO_WALL_12', 'GROUND_TO_WALL_13', 'GROUND_TO_WALL_14'], fps: 10, loop: false },
+  wall_left: { frames: ['WALL_LEFT_1', 'WALL_LEFT_2', 'WALL_LEFT_3'], fps: 10, loop: true },
+  WALL_LEFT: { frames: ['WALL_LEFT_1', 'WALL_LEFT_2', 'WALL_LEFT_3'], fps: 10, loop: true },
+  wall_right: { frames: ['WALL_RIGHT_1', 'WALL_RIGHT_2', 'WALL_RIGHT_3'], fps: 10, loop: true },
+  WALL_RIGHT: { frames: ['WALL_RIGHT_1', 'WALL_RIGHT_2', 'WALL_RIGHT_3'], fps: 10, loop: true },
+  climb_up: { frames: ['CLIMB_UP_1', 'CLIMB_UP_2', 'CLIMB_UP_3', 'CLIMB_UP_4', 'CLIMB_UP_5'], fps: 10, loop: true },
+  CLIMB_UP: { frames: ['CLIMB_UP_1', 'CLIMB_UP_2', 'CLIMB_UP_3', 'CLIMB_UP_4', 'CLIMB_UP_5'], fps: 10, loop: true },
+  climb_down: { frames: ['CLIMB_DOWN_1', 'CLIMB_DOWN_2', 'CLIMB_DOWN_3', 'CLIMB_DOWN_4'], fps: 10, loop: true },
+  CLIMB_DOWN: { frames: ['CLIMB_DOWN_1', 'CLIMB_DOWN_2', 'CLIMB_DOWN_3', 'CLIMB_DOWN_4'], fps: 10, loop: true },
+  wall_to_ceiling: { frames: ['WALL_TO_CEILING_1', 'WALL_TO_CEILING_2', 'WALL_TO_CEILING_3', 'WALL_TO_CEILING_4', 'WALL_TO_CEILING_5', 'WALL_TO_CEILING_6', 'WALL_TO_CEILING_7'], fps: 10, loop: false },
+  WALL_TO_CEILING: { frames: ['WALL_TO_CEILING_1', 'WALL_TO_CEILING_2', 'WALL_TO_CEILING_3', 'WALL_TO_CEILING_4', 'WALL_TO_CEILING_5', 'WALL_TO_CEILING_6', 'WALL_TO_CEILING_7'], fps: 10, loop: false },
+  ceiling_left: { frames: ['CEILING_LEFT_1', 'CEILING_LEFT_2', 'CEILING_LEFT_3', 'CEILING_LEFT_4', 'CEILING_LEFT_5', 'CEILING_LEFT_6', 'CEILING_LEFT_7', 'CEILING_LEFT_8', 'CEILING_LEFT_9', 'CEILING_LEFT_10', 'CEILING_LEFT_11', 'CEILING_LEFT_12'], fps: 10, loop: true },
+  CEILING_LEFT: { frames: ['CEILING_LEFT_1', 'CEILING_LEFT_2', 'CEILING_LEFT_3', 'CEILING_LEFT_4', 'CEILING_LEFT_5', 'CEILING_LEFT_6', 'CEILING_LEFT_7', 'CEILING_LEFT_8', 'CEILING_LEFT_9', 'CEILING_LEFT_10', 'CEILING_LEFT_11', 'CEILING_LEFT_12'], fps: 10, loop: true },
+  ceiling_right: { frames: ['CEILING_RIGHT_1', 'CEILING_RIGHT_2', 'CEILING_RIGHT_3', 'CEILING_RIGHT_4', 'CEILING_RIGHT_5', 'CEILING_RIGHT_6', 'CEILING_RIGHT_7', 'CEILING_RIGHT_8', 'CEILING_RIGHT_9', 'CEILING_RIGHT_10', 'CEILING_RIGHT_11'], fps: 10, loop: true },
+  CEILING_RIGHT: { frames: ['CEILING_RIGHT_1', 'CEILING_RIGHT_2', 'CEILING_RIGHT_3', 'CEILING_RIGHT_4', 'CEILING_RIGHT_5', 'CEILING_RIGHT_6', 'CEILING_RIGHT_7', 'CEILING_RIGHT_8', 'CEILING_RIGHT_9', 'CEILING_RIGHT_10', 'CEILING_RIGHT_11'], fps: 10, loop: true },
+  ceiling_to_wall: { frames: ['CEILING_TO_WALL_1', 'CEILING_TO_WALL_2', 'CEILING_TO_WALL_3', 'CEILING_TO_WALL_4', 'CEILING_TO_WALL_5', 'CEILING_TO_WALL_6', 'CEILING_TO_WALL_7', 'CEILING_TO_WALL_8', 'CEILING_TO_WALL_9', 'CEILING_TO_WALL_10'], fps: 10, loop: false },
+  CEILING_TO_WALL: { frames: ['CEILING_TO_WALL_1', 'CEILING_TO_WALL_2', 'CEILING_TO_WALL_3', 'CEILING_TO_WALL_4', 'CEILING_TO_WALL_5', 'CEILING_TO_WALL_6', 'CEILING_TO_WALL_7', 'CEILING_TO_WALL_8', 'CEILING_TO_WALL_9', 'CEILING_TO_WALL_10'], fps: 10, loop: false },
+  wall_to_ground: { frames: ['WALL_TO_GROUND_1', 'WALL_TO_GROUND_2', 'WALL_TO_GROUND_3', 'WALL_TO_GROUND_4', 'WALL_TO_GROUND_5', 'WALL_TO_GROUND_6', 'WALL_TO_GROUND_7', 'WALL_TO_GROUND_8', 'WALL_TO_GROUND_9', 'WALL_TO_GROUND_10', 'WALL_TO_GROUND_11'], fps: 10, loop: false },
+  WALL_TO_GROUND: { frames: ['WALL_TO_GROUND_1', 'WALL_TO_GROUND_2', 'WALL_TO_GROUND_3', 'WALL_TO_GROUND_4', 'WALL_TO_GROUND_5', 'WALL_TO_GROUND_6', 'WALL_TO_GROUND_7', 'WALL_TO_GROUND_8', 'WALL_TO_GROUND_9', 'WALL_TO_GROUND_10', 'WALL_TO_GROUND_11'], fps: 10, loop: false },
+  swing: { frames: ['SWING_1', 'SWING_2', 'SWING_3', 'SWING_4', 'SWING_5'], fps: 10, loop: true },
+  SWING: { frames: ['SWING_1', 'SWING_2', 'SWING_3', 'SWING_4', 'SWING_5'], fps: 10, loop: true },
+  hang: { frames: ['HANG_1', 'HANG_2', 'HANG_3', 'HANG_4', 'HANG_5', 'HANG_6', 'HANG_7', 'HANG_8', 'HANG_9'], fps: 10, loop: true },
+  HANG: { frames: ['HANG_1', 'HANG_2', 'HANG_3', 'HANG_4', 'HANG_5', 'HANG_6', 'HANG_7', 'HANG_8', 'HANG_9'], fps: 10, loop: true },
 };
+ANIMS['sit'] = ANIMS['idle'] || ANIMS.idle;
+ANIMS['crouch'] = ANIMS['ground_to_wall'] || ANIMS.idle;
+ANIMS['backflip'] = ANIMS['swing'] || ANIMS.idle;
+ANIMS['jump'] = ANIMS['approach_wall'] || ANIMS.idle;
+ANIMS['fall'] = ANIMS['wall_to_ground'] || ANIMS.idle;
+ANIMS['land'] = ANIMS['wall_to_ground'] || ANIMS.idle;
+ANIMS['dizzy'] = ANIMS['hang'] || ANIMS.idle;
+ANIMS['victory'] = ANIMS['idle'] || ANIMS.idle;
+ANIMS['webShoot'] = ANIMS['swing'] || ANIMS.idle;
+ANIMS['webZip'] = ANIMS['swing'] || ANIMS.idle;
+ANIMS['wave'] = ANIMS['idle'] || ANIMS.idle;
+ANIMS['stretch'] = ANIMS['idle'] || ANIMS.idle;
+ANIMS['prepare'] = ANIMS['approach_wall'] || ANIMS.idle;
+ANIMS['hanging'] = ANIMS['hang'] || ANIMS.idle;
+ANIMS['idleHanging'] = ANIMS['hang'] || ANIMS.idle;
+ANIMS['crawlLeft'] = ANIMS['wall_left'] || ANIMS.idle;
+ANIMS['crawlRight'] = ANIMS['wall_right'] || ANIMS.idle;
+ANIMS['sitFidget'] = ANIMS['idle'] || ANIMS.idle;
+ANIMS['lookUp'] = ANIMS['idle'] || ANIMS.idle;
+ANIMS['lookDown'] = ANIMS['idle'] || ANIMS.idle;
+ANIMS['aim'] = ANIMS['approach_wall'] || ANIMS.idle;
+ANIMS['shoot'] = ANIMS['swing'] || ANIMS.idle;
+ANIMS['zip'] = ANIMS['swing'] || ANIMS.idle;
+ANIMS['perch'] = ANIMS['hang'] || ANIMS.idle;
+ANIMS['attack'] = ANIMS['swing'] || ANIMS.idle;
+ANIMS['roll'] = ANIMS['ground_to_wall'] || ANIMS.idle;
+ANIMS['takeDamage'] = ANIMS['wall_to_ground'] || ANIMS.idle;
+ANIMS['dead'] = ANIMS['hang'] || ANIMS.idle;
+ANIMS['leap'] = ANIMS['approach_wall'] || ANIMS.idle;
+ANIMS['thwip'] = ANIMS['swing'] || ANIMS.idle;
+ANIMS['flinch'] = ANIMS['wall_to_ground'] || ANIMS.idle;
 
 export class AnimationPlayer {
   private currentAnim: string = 'idle';
@@ -230,7 +94,6 @@ export class AnimationPlayer {
     const def = ANIMS[this.currentAnim] || ANIMS.idle;
     const frameDuration = 1000 / (def.fps || 4);
     this.frameTimer += dtMs;
-
     while (this.frameTimer >= frameDuration) {
       this.frameTimer -= frameDuration;
       if (this.frameIndex + 1 < def.frames.length) {
@@ -242,26 +105,14 @@ export class AnimationPlayer {
         break;
       }
     }
-
-    const pose = def.frames[this.frameIndex];
-    return pose || 'IDLE';
+    return def.frames[this.frameIndex] || 'IDLE_1';
   }
 
   getCurrentPose(): PoseName {
     const def = ANIMS[this.currentAnim] || ANIMS.idle;
-    const pose = def.frames[this.frameIndex];
-    return pose || 'IDLE';
+    return def.frames[this.frameIndex] || 'IDLE_1';
   }
-
-  isFinished(): boolean {
-    return this.finished;
-  }
-
-  getCurrentAnim(): string {
-    return this.currentAnim;
-  }
-
-  getFrameIndex(): number {
-    return this.frameIndex;
-  }
+  isFinished(): boolean { return this.finished; }
+  getCurrentAnim(): string { return this.currentAnim; }
+  getFrameIndex(): number { return this.frameIndex; }
 }

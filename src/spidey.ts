@@ -30,6 +30,21 @@ const SCALE = DISPLAY_SCALE;
 
 export type SpideyState =
   | 'IDLE'
+  | 'WALK'
+  | 'RUN'
+  | 'APPROACH_WALL'
+  | 'GROUND_TO_WALL'
+  | 'WALL_LEFT'
+  | 'WALL_RIGHT'
+  | 'CLIMB_UP'
+  | 'CLIMB_DOWN'
+  | 'WALL_TO_CEILING'
+  | 'CEILING_LEFT'
+  | 'CEILING_RIGHT'
+  | 'CEILING_TO_WALL'
+  | 'WALL_TO_GROUND'
+  | 'SWING'
+  | 'HANG'
   | 'TARGETING'
   | 'WEB_ATTACHING'
   | 'SWINGING'
@@ -48,6 +63,7 @@ export type SpideyState =
   | 'RECOVERING'
   | 'WAVING'
   | 'STRETCHING';
+
 
 export class WebSlingerPet {
   private canvas: HTMLCanvasElement;
@@ -331,19 +347,95 @@ export class WebSlingerPet {
       case 'IDLE':
       case 'SITTING':
         this.body.authority = 'ON_SURFACE';
-        this.anim.play('sit');
+        this.anim.play('idle');
         this.squash = 1;
         this.currentRotation = 0;
         this.nextIdleDecisionTs = performance.now() + 6000 + Math.random() * 5000;
         break;
 
+      case 'WALK':
+      case 'WALKING':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('walk');
+        break;
+
+      case 'RUN':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('run');
+        break;
+
+      case 'APPROACH_WALL':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('approach_wall');
+        break;
+
+      case 'GROUND_TO_WALL':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('ground_to_wall');
+        break;
+
+      case 'WALL_LEFT':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('wall_left');
+        break;
+
+      case 'WALL_RIGHT':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('wall_right');
+        break;
+
+      case 'CLIMB_UP':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('climb_up');
+        break;
+
+      case 'CLIMB_DOWN':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('climb_down');
+        break;
+
+      case 'WALL_TO_CEILING':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('wall_to_ceiling');
+        break;
+
+      case 'CEILING_LEFT':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('ceiling_left');
+        break;
+
+      case 'CEILING_RIGHT':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('ceiling_right');
+        break;
+
+      case 'CEILING_TO_WALL':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('ceiling_to_wall');
+        break;
+
+      case 'WALL_TO_GROUND':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('wall_to_ground');
+        break;
+
+      case 'SWING':
+        this.body.authority = 'SWINGING';
+        this.anim.play('swing');
+        break;
+
+      case 'HANG':
+        this.body.authority = 'ON_SURFACE';
+        this.anim.play('hang');
+        break;
+
       case 'TARGETING':
         this.detachSurface();
-        this.anim.play('prepare');
+        this.anim.play('approach_wall');
         break;
 
       case 'WEB_ATTACHING':
-        this.anim.play('webShoot');
+        this.anim.play('swing');
         this.body.vy = -6.5;
         const dx = this.targetAnchorWorldX - this.body.worldX;
         this.body.vx = (dx >= 0 ? 1 : -1) * Math.min(5.5, Math.max(1.8, Math.abs(dx) * 0.008));
@@ -359,7 +451,7 @@ export class WebSlingerPet {
 
       case 'HANGING':
         this.body.authority = 'ON_SURFACE';
-        this.anim.play('hanging');
+        this.anim.play('hang');
         this.currentRotation = 0;
         this.squash = 0.70;
         triggerShake(3, 0.88);
@@ -367,19 +459,19 @@ export class WebSlingerPet {
 
       case 'IDLE_HANGING':
         this.body.authority = 'ON_SURFACE';
-        this.anim.play('idleHanging');
+        this.anim.play('hang');
         this.currentRotation = 0;
         this.squash = 1.0;
         break;
 
       case 'CRAWLING':
         this.body.authority = 'ON_SURFACE';
-        this.anim.play(this.facing > 0 ? 'crawlRight' : 'crawlLeft');
+        this.anim.play(this.facing > 0 ? 'wall_right' : 'wall_left');
         break;
 
       case 'BACKFLIP':
         this.detachSurface();
-        this.anim.play('backflip');
+        this.anim.play('swing');
         this.body.vy = PHYS_CONFIG.backflipImpulseY;
         const bdx = this.targetAnchorWorldX - this.body.worldX;
         this.body.vx = (bdx >= 0 ? 1 : -1) * Math.min(5, Math.max(1.5, Math.abs(bdx) * 0.007));
@@ -395,12 +487,12 @@ export class WebSlingerPet {
           this.body.vy = vel.y;
         }
         this.rope = null;
-        this.anim.play('fall');
+        this.anim.play('wall_to_ground');
         break;
 
       case 'FALLING':
         this.detachSurface();
-        this.anim.play('fall');
+        this.anim.play('wall_to_ground');
         this.currentRotation = 0;
         this.fallStartWorldY = this.body.worldY;
         break;
@@ -409,7 +501,7 @@ export class WebSlingerPet {
       case 'HARD_LANDING':
         const hard = nextState === 'HARD_LANDING';
         this.squash = hard ? 0.35 : 0.60;
-        this.anim.play('land');
+        this.anim.play('wall_to_ground');
         this.currentRotation = 0;
         const sx = this.screenX();
         const sy = this.screenY();
@@ -425,7 +517,7 @@ export class WebSlingerPet {
       case 'DIZZY':
         this.body.authority = 'AIRBORNE';
         this.body.vx = this.body.vy = 0;
-        this.anim.play('dizzy');
+        this.anim.play('hang');
         triggerShake(6, 0.82);
         break;
 
