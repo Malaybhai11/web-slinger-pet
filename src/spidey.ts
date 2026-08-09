@@ -321,11 +321,6 @@ export class WebSlingerPet {
     this.body.supported       = true;
     this.body.grounded        = true;
     this.body.authority       = 'ON_SURFACE';
-
-    if (s.el) {
-      s.el.classList.add('webbed');
-      setTimeout(() => s.el?.classList.remove('webbed'), 1200);
-    }
   }
 
   // ── State Machine Transitions ─────────────────────────────────────────────
