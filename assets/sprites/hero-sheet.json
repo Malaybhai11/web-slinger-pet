@@ -1,0 +1,42 @@
+{
+ "frames": {
+  "idle0": { "frame": { "x": 0, "y": 0, "w": 64, "h": 64 } },
+  "idle1": { "frame": { "x": 64, "y": 0, "w": 64, "h": 64 } },
+  "idle2": { "frame": { "x": 128, "y": 0, "w": 64, "h": 64 } },
+  "idle3": { "frame": { "x": 192, "y": 0, "w": 64, "h": 64 } },
+  "walk0": { "frame": { "x": 256, "y": 0, "w": 64, "h": 64 } },
+  "walk1": { "frame": { "x": 320, "y": 0, "w": 64, "h": 64 } },
+  "walk2": { "frame": { "x": 384, "y": 0, "w": 64, "h": 64 } },
+  "walk3": { "frame": { "x": 0, "y": 64, "w": 64, "h": 64 } },
+  "walk4": { "frame": { "x": 64, "y": 64, "w": 64, "h": 64 } },
+  "walk5": { "frame": { "x": 128, "y": 64, "w": 64, "h": 64 } },
+  "walk6": { "frame": { "x": 192, "y": 64, "w": 64, "h": 64 } },
+  "walk7": { "frame": { "x": 256, "y": 64, "w": 64, "h": 64 } },
+  "jump0": { "frame": { "x": 320, "y": 64, "w": 64, "h": 64 } },
+  "jump1": { "frame": { "x": 384, "y": 64, "w": 64, "h": 64 } },
+  "jump2": { "frame": { "x": 0, "y": 128, "w": 64, "h": 64 } },
+  "jump3": { "frame": { "x": 64, "y": 128, "w": 64, "h": 64 } },
+  "land0": { "frame": { "x": 128, "y": 128, "w": 64, "h": 64 } },
+  "land1": { "frame": { "x": 192, "y": 128, "w": 64, "h": 64 } },
+  "land2": { "frame": { "x": 256, "y": 128, "w": 64, "h": 64 } },
+  "swing0": { "frame": { "x": 320, "y": 128, "w": 64, "h": 64 } },
+  "swing1": { "frame": { "x": 384, "y": 128, "w": 64, "h": 64 } },
+  "swing2": { "frame": { "x": 0, "y": 192, "w": 64, "h": 64 } },
+  "swing3": { "frame": { "x": 64, "y": 192, "w": 64, "h": 64 } },
+  "fall0": { "frame": { "x": 128, "y": 192, "w": 64, "h": 64 } },
+  "fall1": { "frame": { "x": 192, "y": 192, "w": 64, "h": 64 } },
+  "cling0": { "frame": { "x": 256, "y": 192, "w": 64, "h": 64 } },
+  "crouch0": { "frame": { "x": 320, "y": 192, "w": 64, "h": 64 } }
+ },
+ "animations": {
+  "idle": ["idle0", "idle1", "idle2", "idle1", "idle0", "idle1", "idle2", "idle1", "idle0", "idle1", "idle2", "idle3"],
+  "walk": ["walk0", "walk1", "walk2", "walk3", "walk4", "walk5", "walk6", "walk7"],
+  "jump": ["jump0", "jump1", "jump2", "jump3"],
+  "land": ["land0", "land1", "land2"],
+  "swing": ["swing0", "swing1", "swing2", "swing1"],
+  "fall": ["fall0", "fall1"],
+  "cling": ["cling0"],
+  "crouch": ["crouch0"]
+ },
+ "meta": { "fps": 11, "cell": 64 }
+}
