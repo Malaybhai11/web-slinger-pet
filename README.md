@@ -7,7 +7,8 @@ element. That's the golden rule.
 
 Zero dependencies. Pure TypeScript + Canvas 2D — **no WebGL, no WebGPU**, runs
 smoothly on any CPU, including older Chrome, mobile Safari, and mid-range
-Android. Even the character is math: every sprite is drawn by code.
+Android. The character is math too: every sprite is drawn by code — and the
+walk cycle is real hand-drawn art layered on top.
 
 ## run it
 
@@ -48,8 +49,8 @@ The whole system is built around one rule: **never stand on empty space.**
   swing / land / cling / crouch), platform chaining with step-up & step-down (§5.6),
   web shoot / attach / release / miss-retract (§4.4)
 - `src/hero/camera/` — lerped scroll-follow with dead zone (§7.1) + impact shake (§7.2)
-- `src/hero/animation/` — procedural rig replay (`rig-data.ts` → offscreen canvas
-  at boot) + 24fps animator over the 60fps render loop
+- `src/hero/animation/` — dual-mode sprite system (below) + fps animator over the
+  60fps render loop
 - `src/hero/render/` — one fixed canvas (`pointer-events:none`, `aria-hidden`),
   web line with catenary sag + wind (§4.3), ground shadow, aim dots, particles
 - `src/hero/audio/` — Web Audio synthesized thwip / thud / boing / steps (§10),
@@ -74,9 +75,22 @@ Outputs:
 - `assets/sprites/hero-sheet.png` + `.json` — packed atlas + descriptor
 - `src/hero/animation/rig-data.ts` — every frame as draw primitives
 
-The engine loads **no images**: at boot it replays `rig-data.ts` onto an
-offscreen canvas (`src/hero/animation/procedural.ts`) and animates at **24fps**
-with 60fps position interpolation. The repo is 100% text and runs anywhere.
+At boot the engine replays `rig-data.ts` onto an offscreen canvas
+(`src/hero/animation/procedural.ts`) and animates at **24fps** with 60fps
+position interpolation.
+
+### real walk art (hybrid mode)
+
+The walk cycle is **hand-drawn art**: `npm run sprites:walk` runs
+`scripts/extract-walk.py`, which cuts the 18-frame strip
+(`assets/src-sheets/walk-strip.png`), keys out the black backdrop, normalizes
+each frame into feet-anchored 128px cells, and packs
+`public/assets/walk-sheet.png` (+ `src/hero/animation/walk-art-data.ts`).
+When that PNG is present, the walk state plays the real 18-frame cycle while
+every other state stays procedural — `__hero.debug()` shows
+`sprites: "art+rig"`. Missing? The rig's own walk cycle takes over
+(`sprites: "procedural"`); the engine always runs. The walk PNG is the only
+binary asset in the project.
 
 ## qa
 
@@ -87,8 +101,8 @@ npm run qa        # playwright: spawn/walk/jump/swing/land/miss checks + screens
 
 The QA suite verifies the golden rule — every grounded frame has a real DOM
 element under his feet. In the console, `__hero.debug()` shows state, ground
-tag, surface count, fps and sprite mode; `__hero.testCast(x, y)` dry-runs a
-web shot.
+tag, surface count, fps and which sprite mode loaded; `__hero.testCast(x, y)`
+dry-runs a web shot.
 
 ## use it on your own page
 
@@ -102,9 +116,9 @@ he spawns on your first heading and takes it from there.
 
 ## notes & deviations from the PRD
 
-- Character art is fully procedural — a forward-kinematics rig with per-state
-  pose math in `scripts/generate-sprites.py` (poses guided by reference sheets;
-  no pixels were extracted from them)
+- Character art is procedural — a forward-kinematics rig with per-state
+  pose math in `scripts/generate-sprites.py` — plus a real hand-drawn walk
+  cycle extracted by `scripts/extract-walk.py` (hybrid `art+rig` mode)
 - Audio is synthesized with Web Audio oscillators/noise instead of mp3 assets
 - The "camera" is the page scroll itself (lerped `scrollTo` with a dead zone)
 - DEAD/hazard state intentionally omitted — a landing page has no lava

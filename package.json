@@ -9,6 +9,7 @@
     "watch": "tsc -p tsconfig.json --watch",
     "preview": "node server.mjs",
     "sprites": "python3 scripts/generate-sprites.py",
+    "sprites:walk": "python3 scripts/extract-walk.py",
     "qa": "node qa/shoot.mjs"
   },
   "keywords": [
