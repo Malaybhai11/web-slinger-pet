@@ -30,13 +30,13 @@ FPS = 24            # animation fps (smooth, per spec)
 COLS = 7
 SS = 3              # supersample factor for anti-aliasing
 
-# ---- palette (red suit, dark legs, white eyes — matches the reference) ----
-INK = (13, 10, 18)        # outline
-RED = (214, 38, 44)       # mask / torso / gloves
-DRED = (122, 22, 32)      # dark red — far arm, torso side panel
-SUIT = (24, 24, 30)       # dark legs
+# ---- palette (black suit, red accents, white eyes — matches the walk art) ----
+INK = (10, 9, 14)         # outline
+RED = (30, 28, 38)        # suit primary — mask / torso / arms (near-black)
+DRED = (17, 15, 22)       # suit shadow — far arm, torso side panel
+SUIT = (24, 24, 30)       # legs
 DSUIT = (15, 15, 20)      # far leg
-BOOT = (198, 32, 40)
+BOOT = (198, 32, 40)      # red accent — boots, hands, chest emblem
 DBOOT = (110, 18, 26)
 EYE = (244, 246, 255)
 
@@ -361,13 +361,13 @@ def build_prims(p, j):
     cap((-2.5, p['hipDy']), (j['shoulder'][0] - 2.5, j['shoulder'][1]), 15, SUIT)
     cap((1.5, p['hipDy']), (j['shoulder'][0] + 1.5, j['shoulder'][1]), 13, RED)
 
-    # chest mark: tiny dark spider dot
+    # chest mark: red spider emblem on the black torso
     mx, my = (j['shoulder'][0] * 0.5, j['shoulder'][1] * 0.55)
-    circle((mx + 2, my), 2.2, INK)
+    circle((mx + 2, my), 2.6, BOOT)
 
-    # near leg + near arm
+    # near leg + near arm (red glove on the near hand)
     limb(j['hipR'], j['kneeR'], j['footR'], j['toeR'], 9, 8, SUIT, SUIT, BOOT)
-    arm(j['shoulder'], j['elbowR'], j['handR'], RED, RED)
+    arm(j['shoulder'], j['elbowR'], j['handR'], RED, BOOT)
 
     # head: red mask, two fierce wedge eyes
     h = j['head']

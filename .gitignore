@@ -3,3 +3,4 @@ public/js/
 qa/out/
 *.log
 .DS_Store
+venv/
