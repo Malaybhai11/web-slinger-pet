@@ -166,8 +166,9 @@ reported a 48fps "regression" that was entirely its own screenshots.
 
 In the console: `__hero.debug()` (state, clip, direction, frame, fps, current
 goal and the needs vector), `__hero.force(state)` to pin a pose,
-`__hero.force(null)` to release, `__hero.talk(text)`, and
-`__hero.testCast(x, y)` to dry-run a web shot.
+`__hero.force(null)` to release, `__hero.setAuto(false)` to switch the director
+off, `__hero.reset()` to put him back on the spawn surface, `__hero.talk(text)`,
+and `__hero.testCast(x, y)` to dry-run a web shot.
 
 ## use it on your own page
 

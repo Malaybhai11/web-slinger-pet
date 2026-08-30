@@ -7,6 +7,19 @@
 
 import type { Surface } from '../world/surfaces.js';
 import type { Pendulum } from '../physics/pendulum.js';
+import { CHAR_HEIGHT } from '../animation/atlas-data.js';
+import { SCALE } from '../animation/sprite.js';
+
+/**
+ * Distance from his feet to his hands, in CSS pixels — where the web leaves
+ * from and what the pendulum actually drives.
+ *
+ * Derived from the art rather than hard-coded: the sprite is CHAR_HEIGHT source
+ * pixels tall drawn at SCALE, and his hands sit a little above three-quarters
+ * of the way up. The old fixed 50 was measured against a shorter sprite and
+ * left the web line attached to the middle of his chest.
+ */
+export const HAND_HEIGHT = Math.round(CHAR_HEIGHT * SCALE * 0.78);
 
 export type HeroState =
   // locomotion and physics — driven by input or the director
@@ -41,7 +54,7 @@ export class Hero {
   stateT = 0;        // seconds in current state
   ground: Surface | null = null;
   pendulum: Pendulum | null = null;
-  height = 50;       // feet → web-hand origin
+  height = HAND_HEIGHT; // feet → web-hand origin, measured off the sprite
   stepT = 0;         // footstep sound timer
   jumpQueued = false;
 

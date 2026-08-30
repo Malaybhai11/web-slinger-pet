@@ -69,6 +69,8 @@ export class Director {
   private cooldown = new Map<GoalId, number>();
   private manualFor = 0;
   private lastGround: Surface | null = null;
+  /** hard off switch — used by QA to make manual-control tests deterministic */
+  private enabled = true;
 
   constructor(private host: DirectorHost) {}
 
@@ -80,7 +82,13 @@ export class Director {
   }
 
   get autonomous(): boolean {
-    return this.manualFor <= 0;
+    return this.enabled && this.manualFor <= 0;
+  }
+
+  /** Turn autonomy off entirely. He then only moves when the user drives him. */
+  setEnabled(on: boolean): void {
+    this.enabled = on;
+    if (!on) { this.clearInput(); this.goal = null; this.jumpQueued = false; }
   }
 
   get currentGoal(): GoalId | null {
@@ -89,6 +97,7 @@ export class Director {
 
   step(dt: number): void {
     const { hero, needs } = this.host;
+    if (!this.enabled) { this.clearInput(); return; }
 
     if (this.manualFor > 0) {
       this.manualFor -= dt;
@@ -347,6 +356,7 @@ export class Director {
       goal: this.goal?.id ?? null,
       phase: this.goal?.phase ?? null,
       autonomous: this.autonomous,
+      aiEnabled: this.enabled,
       ...this.host.needs.snapshot(),
     };
   }

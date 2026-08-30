@@ -44,13 +44,32 @@ const waitState = (fn, timeout = 3000) =>
     .then(() => true)
     .catch(() => false);
 
+// This suite drives him by keyboard and asserts exact displacements, so the
+// director has to be off — left on, he is already patrolling (or mid-jump) by
+// the time the first sample is taken and every check races his own goals.
+// Autonomy itself is covered by qa/poses.mjs.
+//
+// The switch is armed *before* the page runs, because he starts moving within
+// a second of boot and there is no point disabling him after he has already
+// left the title.
+await page.addInitScript(() => {
+  const arm = () => {
+    if (window.__hero?.setAuto) window.__hero.setAuto(false);
+    else requestAnimationFrame(arm);
+  };
+  arm();
+});
 await page.goto(BASE, { waitUntil: 'networkidle' });
 await page.waitForTimeout(1500); // atlas decode + first surface scan
+await page.evaluate(() => { window.__hero.setAuto(false); window.__hero.reset(); });
+await page.waitForTimeout(300);
 
 // ---- 01 spawn: standing on the hero title ----
 const spawn = await debug();
 console.log('spawn:', JSON.stringify(spawn));
 check('booted', !!spawn);
+check('sprite atlas loaded', spawn?.sprites === 'atlas');
+check('autonomy disabled for this suite', spawn?.aiEnabled === false);
 check('spawns on H1 (real element)', spawn?.ground === 'H1');
 check('30+ surfaces mapped', (spawn?.surfaces ?? 0) >= 30);
 await page.screenshot({ path: `${OUT}/01-spawn.png` });

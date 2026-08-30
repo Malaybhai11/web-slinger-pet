@@ -484,6 +484,20 @@ class HeroSystem implements MoveEvents, ShootEvents {
     this.animator.play(choice.clip, this.facingDir(choice.profile), { restart: true });
   }
 
+  /** QA hook: switch autonomy off so manual-control tests are deterministic. */
+  setAuto(on: boolean): void {
+    this.director.setEnabled(on);
+  }
+
+  /** QA hook: put him back on the spawn surface, at rest. */
+  reset(): void {
+    this.frozen = null;
+    this.performing = false;
+    this.bubble.clear();
+    this.respawn();
+    this.hero.transition('idle');
+  }
+
   /** QA hook: make him talk on demand. */
   talk(text: string): void {
     this.bubble.say(text, 2.5);
@@ -502,6 +516,8 @@ async function boot(): Promise<void> {
     debug: () => system.debug(),
     testCast: (x: number, y: number) => system.testCast(x, y),
     force: (s: string | null) => system.force(s as HeroState | null),
+    setAuto: (on: boolean) => system.setAuto(on),
+    reset: () => system.reset(),
     talk: (t: string) => system.talk(t),
   };
   system.start();

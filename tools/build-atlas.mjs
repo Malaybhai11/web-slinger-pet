@@ -23,7 +23,7 @@ import path from 'node:path';
 import { decodePNG, encodePNG } from './png.mjs';
 import {
   makeImage, blit, normalize, hardenAlpha, despeckle, countColors,
-  buildPalette, snapToPalette,
+  buildPalette, snapToPalette, bbox,
 } from './pixel.mjs';
 
 const SRC = 'assets/pixellab';
@@ -185,9 +185,18 @@ cells.forEach((c, i) => {
 await mkdir('public/assets', { recursive: true });
 await writeFile('public/assets/hero-atlas.png', encodePNG(atlas.width, atlas.height, atlas.data));
 
+// How tall the character actually stands, measured off the idle pose. The
+// engine needs this to know where his hands are: the web has to leave from the
+// hands, and a hard-coded height left over from an older, shorter sprite
+// attaches the line to the middle of his chest.
+const standing = groups.find((g) => g.clip === 'idle') ?? groups.find((g) => g.clip === 'pose');
+const standBox = standing ? bbox(standing.frames[0]) : null;
+const CHAR_HEIGHT = standBox ? standBox.h : 47;
+
 const meta = {
   cell: CELL,
   anchor: { x: ANCHOR_X, y: ANCHOR_Y },
+  charHeight: CHAR_HEIGHT,
   atlas: { width: atlas.width, height: atlas.height, cols: COLS, rows },
   frames: frameTable,
   clips: clipTable,
@@ -208,6 +217,9 @@ export const ATLAS_URL = '/assets/hero-atlas.png';
 export const CELL = ${CELL};
 export const ANCHOR_X = ${ANCHOR_X};
 export const ANCHOR_Y = ${ANCHOR_Y};
+
+/** Height of the standing character in source pixels, measured off the idle pose. */
+export const CHAR_HEIGHT = ${CHAR_HEIGHT};
 
 export interface FrameRect { x: number; y: number }
 export interface Clip {
@@ -288,6 +300,7 @@ const colors = countColors(atlas);
 console.log(`palette ${PALETTE.length} colours`);
 console.log(`\natlas   ${atlas.width}x${atlas.height}  (${COLS}x${rows} cells of ${CELL})`);
 console.log(`frames  ${cells.length}`);
+console.log(`stands  ${CHAR_HEIGHT}px tall in source pixels`);
 console.log(`clips   ${Object.keys(clipTable).length}`);
 console.log(`colours ${colors}`);
 if (speckles) console.log(`despeckled ${speckles} orphan pixels`);

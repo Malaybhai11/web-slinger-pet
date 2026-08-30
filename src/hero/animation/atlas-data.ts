@@ -11,6 +11,9 @@ export const CELL = 96;
 export const ANCHOR_X = 48;
 export const ANCHOR_Y = 88;
 
+/** Height of the standing character in source pixels, measured off the idle pose. */
+export const CHAR_HEIGHT = 46;
+
 export interface FrameRect { x: number; y: number }
 export interface Clip {
   /** frame keys per source direction; the engine mirrors for the west side */
