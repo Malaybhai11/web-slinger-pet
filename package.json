@@ -1,28 +1,32 @@
 {
   "name": "web-slinger-pet",
   "version": "2.0.0",
-  "description": "A DOM-aware pixel hero that stands on real elements, swings from buttons to headings, and never floats in empty space.",
+  "description": "A DOM-aware pixel Spider-Man who lives on your page: patrols your nav, hops between buttons, web-swings to your cards, and has opinions about your copy.",
   "type": "module",
   "scripts": {
-    "dev": "tsc -p tsconfig.json && node server.mjs",
+    "dev": "npm run sprites && tsc -p tsconfig.json && node server.mjs",
     "build": "tsc -p tsconfig.json",
     "watch": "tsc -p tsconfig.json --watch",
     "preview": "node server.mjs",
-    "sprites": "python3 scripts/generate-sprites.py",
-    "sprites:walk": "python3 scripts/extract-walk.py",
-    "qa": "node qa/shoot.mjs"
+    "sprites": "node tools/build-atlas.mjs",
+    "qa": "node qa/shoot.mjs",
+    "pixellab": "node tools/pixellab.mjs",
+    "poses": "node qa/poses.mjs"
   },
   "keywords": [
     "pixel-art",
     "canvas",
     "dom-aware",
     "web-pet",
-    "landing-page",
+    "desktop-pet",
+    "spiderman",
+    "sprite-animation",
     "typescript",
     "zero-dependencies"
   ],
   "license": "MIT",
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "playwright": "^1.49.0"
   }
 }

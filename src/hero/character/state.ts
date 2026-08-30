@@ -9,9 +9,20 @@ import type { Surface } from '../world/surfaces.js';
 import type { Pendulum } from '../physics/pendulum.js';
 
 export type HeroState =
+  // locomotion and physics — driven by input or the director
   | 'idle' | 'walking' | 'running'
   | 'jumping' | 'falling' | 'swinging'
-  | 'landing' | 'clinging' | 'crouching';
+  | 'landing' | 'clinging' | 'crouching'
+  // performance states — the director plays these when nothing else is urgent.
+  // They are grounded and interruptible; none of them move him.
+  | 'stretching' | 'sitting' | 'taunting' | 'pressing' | 'sipping'
+  | 'faceplanting' | 'recovering' | 'skidding' | 'alerting';
+
+/** States that are a one-shot performance rather than a movement mode. */
+export const PERFORMANCE: ReadonlySet<HeroState> = new Set<HeroState>([
+  'stretching', 'sitting', 'taunting', 'pressing', 'sipping',
+  'faceplanting', 'recovering', 'skidding', 'alerting',
+]);
 
 export interface InputState {
   left: boolean;
@@ -46,7 +57,13 @@ export class Hero {
       this.state === 'walking' ||
       this.state === 'running' ||
       this.state === 'crouching' ||
-      this.state === 'landing'
+      this.state === 'landing' ||
+      PERFORMANCE.has(this.state)
     );
+  }
+
+  /** Performing a one-shot: the director should not start something new yet. */
+  get performing(): boolean {
+    return PERFORMANCE.has(this.state);
   }
 }

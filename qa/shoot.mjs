@@ -17,8 +17,11 @@ const OUT = new URL('./out/', import.meta.url).pathname;
 
 await mkdir(OUT, { recursive: true });
 
+// Let Playwright resolve its own browser (PLAYWRIGHT_BROWSERS_PATH); only
+// override when CHROMIUM_PATH is set explicitly. The old hard-coded
+// /usr/local/bin/chromium does not exist on most machines, including CI.
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH || '/usr/local/bin/chromium',
+  ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
   args: ['--no-sandbox'],
 });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });

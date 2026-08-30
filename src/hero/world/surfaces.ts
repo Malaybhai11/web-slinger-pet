@@ -169,6 +169,44 @@ export class SurfaceMap {
     }
     return best;
   }
+
+  /**
+   * Surfaces the director can aim at: within `radius` of (x, y), currently on
+   * screen, and not the one he is already standing on. Sorted nearest first.
+   *
+   * On-screen matters — picking a target two thousand pixels down the page
+   * makes him walk off into nothing while the camera trails behind.
+   */
+  candidates(
+    x: number,
+    y: number,
+    radius: number,
+    opts: { types?: SurfaceType[]; exclude?: Surface | null; minDistance?: number } = {},
+  ): Surface[] {
+    const { types, exclude, minDistance = 0 } = opts;
+    const sy = window.scrollY;
+    const viewTop = sy - 80;
+    const viewBottom = sy + window.innerHeight + 80;
+    const out: { s: Surface; d: number }[] = [];
+
+    for (const s of this.surfaces) {
+      if (s === exclude || s.el === exclude?.el) continue;
+      if (types && !types.includes(s.type)) continue;
+      const t = topPage(s);
+      if (t < viewTop || t > viewBottom) continue;
+      const cx = centerXPage(s);
+      const d = Math.hypot(cx - x, t - y);
+      if (d > radius || d < minDistance) continue;
+      out.push({ s, d });
+    }
+    out.sort((a, b) => a.d - b.d);
+    return out.map((o) => o.s);
+  }
+
+  /** Is this surface still in the document and in the current map? */
+  has(s: Surface | null): boolean {
+    return !!s && this.surfaces.includes(s) && document.contains(s.el);
+  }
 }
 
 function classify(el: Element, cs: CSSStyleDeclaration): SurfaceType | null {
