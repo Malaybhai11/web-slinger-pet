@@ -1,99 +1,120 @@
 /**
- * sprite.ts — HYBRID sprite system.
+ * sprite.ts — the sprite sheet and the one function that draws a frame.
  *
- *  • Every state (idle / run / jump / land / swing / fall / cling / crouch)
- *    is drawn by the procedural rig: rig-data.ts is replayed onto an
- *    offscreen canvas at boot (procedural.ts) — zero image fetches.
- *  • WALKING uses real art: the 18 frames in /assets/walk-sheet.png,
- *    extracted from the hand-drawn strip by scripts/extract-walk.py
- *    (`npm run sprites:walk`). If that PNG is missing, the rig's own walk
- *    cycle takes over automatically, so the engine always runs.
+ * Every frame lives in `public/assets/hero-atlas.png`, built by
+ * `npm run sprites` from real PixelLab art. Frames are pre-anchored on the
+ * character's feet inside a fixed cell (see tools/build-atlas.mjs), so drawing
+ * any clip in any state is a single blit with no per-clip fudge factors.
  *
- * Pure Canvas 2D on the CPU — no WebGL/WebGPU. 24fps animation metadata,
- * 60fps physics interpolation.
+ * Two rules keep it looking like pixel art rather than a blurry photo of pixel
+ * art, and both were broken in the previous renderer:
+ *   1. `imageSmoothingEnabled = false` on every context that touches the atlas
+ *   2. destinations snapped to whole *device* pixels, not CSS pixels — on a
+ *      dpr-2 screen a half-CSS-pixel offset is a real, visible blurred edge
  */
 
-import { RIG_FRAMES, RIG_ANIMS, RIG_CELL, RIG_FPS } from './rig-data.js';
-import { buildProceduralAtlas } from './procedural.js';
-import {
-  WALK_ART_URL,
-  WALK_ART_CELL,
-  WALK_ART_FRAMES,
-  WALK_ART_ANIM,
-} from './walk-art-data.js';
+import { ATLAS_URL, CELL, ANCHOR_X, ANCHOR_Y, FRAMES } from './atlas-data.js';
 
-let atlas: HTMLCanvasElement | null = null;
-let walkArt: HTMLImageElement | null = null;
+/** Integer upscale of the source art. 1x is ~47px tall; 2x reads well on a page. */
+export const SCALE = 2;
+
+let atlas: HTMLImageElement | null = null;
+let failed = false;
+let dpr = 1;
+
+export function setPixelRatio(v: number): void {
+  dpr = v;
+}
 
 export function loadAtlas(): Promise<void> {
-  atlas = buildProceduralAtlas();
-  // the real walk art is optional: resolve either way, never hang the boot
   return new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => {
-      walkArt = img;
-      resolve();
-    };
+    img.onload = () => { atlas = img; resolve(); };
     img.onerror = () => {
-      walkArt = null;
+      failed = true;
+      // Loud on purpose. There is no procedural fallback any more — a missing
+      // atlas means `npm run sprites` was never run, and silently drawing
+      // nothing is how the old build shipped a stickman for months.
+      console.error(
+        `[hero] could not load ${ATLAS_URL}. Run \`npm run sprites\` to build it.`,
+      );
       resolve();
     };
-    img.src = WALK_ART_URL;
+    img.src = ATLAS_URL;
   });
 }
 
-export function getAnims(): Record<string, string[]> {
-  // dynamic: the 18 art frames replace the rig's 8 procedural walk frames
-  // as soon as the walk sheet is loaded
-  if (walkArt) return { ...RIG_ANIMS, walk: WALK_ART_ANIM };
-  return RIG_ANIMS;
-}
-export function getAnimFps(): number {
-  return RIG_FPS;
-}
-export function getSpriteMode(): 'art+rig' | 'procedural' {
-  return walkArt ? 'art+rig' : 'procedural';
+export function getSpriteMode(): 'atlas' | 'missing' {
+  return atlas ? 'atlas' : 'missing';
 }
 
-export interface FrameOptions {
+export function isReady(): boolean {
+  return atlas !== null;
+}
+
+export function hasFrame(key: string): boolean {
+  return key in FRAMES;
+}
+
+export interface DrawOptions {
+  /** mirror horizontally — the whole westward half of the art */
   flip?: boolean;
-  rotation?: number; // radians
-  pivotY?: number;   // rotation pivot relative to the feet anchor (≤ 0)
+  /** radians, applied about the pivot */
+  rotation?: number;
+  /** rotation pivot in CSS px above the feet (negative is up) */
+  pivotY?: number;
+  /** squash and stretch, 1 = neutral. Scaled about the feet. */
+  squashX?: number;
+  squashY?: number;
+  /** overall opacity */
+  alpha?: number;
 }
 
-/** draw a frame with its feet anchored at (x, yBottom); the 128px cells
-    render into the same 64×64 CSS box the physics expect. Real walk art
-    wins over the rig whenever it is loaded. */
+/** Snap a CSS-pixel coordinate to a whole device pixel. */
+const snap = (v: number): number => Math.round(v * dpr) / dpr;
+
+/**
+ * Draw `key` with the character's feet at (x, yBottom) in CSS pixels.
+ * Returns false if the frame or the atlas is missing.
+ */
 export function drawFrame(
   ctx: CanvasRenderingContext2D,
-  name: string,
+  key: string,
   x: number,
   yBottom: number,
-  opts: FrameOptions = {},
-): void {
-  const pivotY = opts.pivotY ?? 0;
+  opts: DrawOptions = {},
+): boolean {
+  const f = FRAMES[key];
+  if (!f || !atlas) return false;
+
+  const { flip = false, rotation = 0, pivotY = 0, squashX = 1, squashY = 1, alpha = 1 } = opts;
+  const size = CELL * SCALE;
+
   ctx.save();
-  ctx.translate(Math.round(x), Math.round(yBottom));
-  ctx.translate(0, pivotY);
-  if (opts.rotation) ctx.rotate(opts.rotation);
-  ctx.translate(0, -pivotY);
-  if (opts.flip) ctx.scale(-1, 1);
-  ctx.imageSmoothingEnabled = true;
-  if (walkArt) {
-    const wa = WALK_ART_FRAMES[name];
-    if (wa) {
-      ctx.drawImage(
-        walkArt,
-        wa.x, wa.y, WALK_ART_CELL, WALK_ART_CELL,
-        -32, -64, 64, 64,
-      );
-      ctx.restore();
-      return;
-    }
+  ctx.imageSmoothingEnabled = false;
+  if (alpha !== 1) ctx.globalAlpha = alpha;
+
+  // land the feet on a whole device pixel before any rotation or scaling
+  ctx.translate(snap(x), snap(yBottom));
+
+  if (rotation) {
+    ctx.translate(0, pivotY);
+    ctx.rotate(rotation);
+    ctx.translate(0, -pivotY);
   }
-  const f = RIG_FRAMES[name];
-  if (f && atlas) {
-    ctx.drawImage(atlas, f.x, f.y, RIG_CELL, RIG_CELL, -32, -64, 64, 64);
-  }
+  if (squashX !== 1 || squashY !== 1) ctx.scale(squashX, squashY);
+  if (flip) ctx.scale(-1, 1);
+
+  ctx.drawImage(
+    atlas,
+    f.x, f.y, CELL, CELL,
+    -ANCHOR_X * SCALE, -ANCHOR_Y * SCALE, size, size,
+  );
   ctx.restore();
+  return true;
+}
+
+/** True once we know the atlas will never arrive, so callers can warn once. */
+export function loadFailed(): boolean {
+  return failed;
 }

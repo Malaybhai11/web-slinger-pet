@@ -1,0 +1,273 @@
+<!doctype html>
+<meta charset="utf-8"><title>hero sprites — contact sheet</title>
+<style>
+  :root { --cell: 96px; color-scheme: dark }
+  body { background:#141418; color:#e8e8ef; font:13px ui-monospace,Menlo,monospace; margin:0; padding:24px }
+  h1 { font-size:16px; margin:0 0 4px } p.sub { color:#8b8b9a; margin:0 0 24px }
+  section { margin-bottom:28px; border-top:1px solid #2a2a34; padding-top:12px }
+  h2 { font-size:14px; color:#ff5c66; margin:0 0 10px }
+  .dir { display:flex; align-items:flex-start; gap:16px; margin-bottom:10px; flex-wrap:wrap }
+  .lbl { width:150px; color:#b9b9c8 } .lbl em { color:#6f6f80; font-style:normal; display:block; font-size:11px }
+  .play, .strip i {
+    width:var(--cell); height:var(--cell);
+    background-image:url('/assets/hero-atlas.png');
+    image-rendering:pixelated; transform:scale(2); transform-origin:top left;
+  }
+  .play { outline:1px solid #2f2f3c }
+  .strip { display:flex; gap:calc(var(--cell) + 6px); margin-left:calc(var(--cell) + 8px) }
+  .strip i { display:block; outline:1px solid #24242e }
+  .row { display:flex; gap:0 }
+</style>
+<h1>hero sprites — contact sheet</h1>
+<p class="sub">201 frames · 28 clips · atlas 768×2496 · shown at 2× · despeckled 0px</p>
+  <section><h2>alert</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>8f · 125ms</em></div>
+      <div class="play" data-frames='[{"x":0,"y":0},{"x":96,"y":0},{"x":192,"y":0},{"x":288,"y":0},{"x":384,"y":0},{"x":480,"y":0},{"x":576,"y":0},{"x":672,"y":0}]' data-dur="125" data-loop="true"></div>
+      <div class="strip"><i style="background-position:-0px -0px"></i><i style="background-position:-96px -0px"></i><i style="background-position:-192px -0px"></i><i style="background-position:-288px -0px"></i><i style="background-position:-384px -0px"></i><i style="background-position:-480px -0px"></i><i style="background-position:-576px -0px"></i><i style="background-position:-672px -0px"></i></div>
+    </div>
+  </section>
+  <section><h2>bored</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>8f · 111ms</em></div>
+      <div class="play" data-frames='[{"x":0,"y":96},{"x":96,"y":96},{"x":192,"y":96},{"x":288,"y":96},{"x":384,"y":96},{"x":480,"y":96},{"x":576,"y":96},{"x":672,"y":96}]' data-dur="111" data-loop="true"></div>
+      <div class="strip"><i style="background-position:-0px -96px"></i><i style="background-position:-96px -96px"></i><i style="background-position:-192px -96px"></i><i style="background-position:-288px -96px"></i><i style="background-position:-384px -96px"></i><i style="background-position:-480px -96px"></i><i style="background-position:-576px -96px"></i><i style="background-position:-672px -96px"></i></div>
+    </div>
+  </section>
+  <section><h2>crawl</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>6f · 100ms</em></div>
+      <div class="play" data-frames='[{"x":0,"y":192},{"x":96,"y":192},{"x":192,"y":192},{"x":288,"y":192},{"x":384,"y":192},{"x":480,"y":192}]' data-dur="100" data-loop="true"></div>
+      <div class="strip"><i style="background-position:-0px -192px"></i><i style="background-position:-96px -192px"></i><i style="background-position:-192px -192px"></i><i style="background-position:-288px -192px"></i><i style="background-position:-384px -192px"></i><i style="background-position:-480px -192px"></i></div>
+    </div>
+  </section>
+  <section><h2>creep</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>8f · 111ms</em></div>
+      <div class="play" data-frames='[{"x":576,"y":192},{"x":672,"y":192},{"x":0,"y":288},{"x":96,"y":288},{"x":192,"y":288},{"x":288,"y":288},{"x":384,"y":288},{"x":480,"y":288}]' data-dur="111" data-loop="true"></div>
+      <div class="strip"><i style="background-position:-576px -192px"></i><i style="background-position:-672px -192px"></i><i style="background-position:-0px -288px"></i><i style="background-position:-96px -288px"></i><i style="background-position:-192px -288px"></i><i style="background-position:-288px -288px"></i><i style="background-position:-384px -288px"></i><i style="background-position:-480px -288px"></i></div>
+    </div>
+  </section>
+  <section><h2>faceplant</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>8f · 83ms · once</em></div>
+      <div class="play" data-frames='[{"x":576,"y":288},{"x":576,"y":288},{"x":672,"y":288},{"x":0,"y":384},{"x":96,"y":384},{"x":192,"y":384},{"x":288,"y":384},{"x":384,"y":384}]' data-dur="83" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-576px -288px"></i><i style="background-position:-576px -288px"></i><i style="background-position:-672px -288px"></i><i style="background-position:-0px -384px"></i><i style="background-position:-96px -384px"></i><i style="background-position:-192px -384px"></i><i style="background-position:-288px -384px"></i><i style="background-position:-384px -384px"></i></div>
+    </div>
+  </section>
+  <section><h2>flip</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>10f · 63ms · once</em></div>
+      <div class="play" data-frames='[{"x":480,"y":384},{"x":576,"y":384},{"x":672,"y":384},{"x":0,"y":480},{"x":96,"y":480},{"x":192,"y":480},{"x":288,"y":480},{"x":384,"y":480},{"x":480,"y":480},{"x":576,"y":480}]' data-dur="63" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-480px -384px"></i><i style="background-position:-576px -384px"></i><i style="background-position:-672px -384px"></i><i style="background-position:-0px -480px"></i><i style="background-position:-96px -480px"></i><i style="background-position:-192px -480px"></i><i style="background-position:-288px -480px"></i><i style="background-position:-384px -480px"></i><i style="background-position:-480px -480px"></i><i style="background-position:-576px -480px"></i></div>
+    </div>
+  </section>
+  <section><h2>grab</h2>
+    <div class="dir">
+      <div class="lbl">south <em>5f · 83ms · once</em></div>
+      <div class="play" data-frames='[{"x":672,"y":480},{"x":0,"y":576},{"x":96,"y":576},{"x":192,"y":576},{"x":288,"y":576}]' data-dur="83" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-672px -480px"></i><i style="background-position:-0px -576px"></i><i style="background-position:-96px -576px"></i><i style="background-position:-192px -576px"></i><i style="background-position:-288px -576px"></i></div>
+    </div>
+  </section>
+  <section><h2>hang</h2>
+    <div class="dir">
+      <div class="lbl">east <em>6f · 125ms</em></div>
+      <div class="play" data-frames='[{"x":384,"y":576},{"x":480,"y":576},{"x":576,"y":576},{"x":672,"y":576},{"x":0,"y":672},{"x":96,"y":672}]' data-dur="125" data-loop="true"></div>
+      <div class="strip"><i style="background-position:-384px -576px"></i><i style="background-position:-480px -576px"></i><i style="background-position:-576px -576px"></i><i style="background-position:-672px -576px"></i><i style="background-position:-0px -672px"></i><i style="background-position:-96px -672px"></i></div>
+    </div>
+  </section>
+  <section><h2>idle</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>4f · 167ms</em></div>
+      <div class="play" data-frames='[{"x":192,"y":672},{"x":288,"y":672},{"x":384,"y":672},{"x":480,"y":672}]' data-dur="167" data-loop="true"></div>
+      <div class="strip"><i style="background-position:-192px -672px"></i><i style="background-position:-288px -672px"></i><i style="background-position:-384px -672px"></i><i style="background-position:-480px -672px"></i></div>
+    </div>
+  </section>
+  <section><h2>idle-front</h2>
+    <div class="dir">
+      <div class="lbl">south <em>4f · 167ms</em></div>
+      <div class="play" data-frames='[{"x":576,"y":672},{"x":672,"y":672},{"x":0,"y":768},{"x":96,"y":768}]' data-dur="167" data-loop="true"></div>
+      <div class="strip"><i style="background-position:-576px -672px"></i><i style="background-position:-672px -672px"></i><i style="background-position:-0px -768px"></i><i style="background-position:-96px -768px"></i></div>
+    </div>
+  </section>
+  <section><h2>idle-side</h2>
+    <div class="dir">
+      <div class="lbl">east <em>4f · 167ms</em></div>
+      <div class="play" data-frames='[{"x":192,"y":768},{"x":288,"y":768},{"x":384,"y":768},{"x":480,"y":768}]' data-dur="167" data-loop="true"></div>
+      <div class="strip"><i style="background-position:-192px -768px"></i><i style="background-position:-288px -768px"></i><i style="background-position:-384px -768px"></i><i style="background-position:-480px -768px"></i></div>
+    </div>
+  </section>
+  <section><h2>jump</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>9f · 83ms · once</em></div>
+      <div class="play" data-frames='[{"x":576,"y":768},{"x":672,"y":768},{"x":0,"y":864},{"x":96,"y":864},{"x":192,"y":864},{"x":288,"y":864},{"x":384,"y":864},{"x":480,"y":864},{"x":576,"y":864}]' data-dur="83" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-576px -768px"></i><i style="background-position:-672px -768px"></i><i style="background-position:-0px -864px"></i><i style="background-position:-96px -864px"></i><i style="background-position:-192px -864px"></i><i style="background-position:-288px -864px"></i><i style="background-position:-384px -864px"></i><i style="background-position:-480px -864px"></i><i style="background-position:-576px -864px"></i></div>
+    </div>
+  </section>
+  <section><h2>land</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>6f · 71ms · once</em></div>
+      <div class="play" data-frames='[{"x":672,"y":864},{"x":672,"y":864},{"x":0,"y":960},{"x":96,"y":960},{"x":192,"y":960},{"x":288,"y":960}]' data-dur="71" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-672px -864px"></i><i style="background-position:-672px -864px"></i><i style="background-position:-0px -960px"></i><i style="background-position:-96px -960px"></i><i style="background-position:-192px -960px"></i><i style="background-position:-288px -960px"></i></div>
+    </div>
+  </section>
+  <section><h2>leap</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>8f · 77ms · once</em></div>
+      <div class="play" data-frames='[{"x":384,"y":960},{"x":480,"y":960},{"x":576,"y":960},{"x":672,"y":960},{"x":0,"y":1056},{"x":96,"y":1056},{"x":192,"y":1056},{"x":288,"y":1056}]' data-dur="77" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-384px -960px"></i><i style="background-position:-480px -960px"></i><i style="background-position:-576px -960px"></i><i style="background-position:-672px -960px"></i><i style="background-position:-0px -1056px"></i><i style="background-position:-96px -1056px"></i><i style="background-position:-192px -1056px"></i><i style="background-position:-288px -1056px"></i></div>
+    </div>
+  </section>
+  <section><h2>ouch</h2>
+    <div class="dir">
+      <div class="lbl">south <em>6f · 71ms · once</em></div>
+      <div class="play" data-frames='[{"x":384,"y":1056},{"x":480,"y":1056},{"x":576,"y":1056},{"x":672,"y":1056},{"x":0,"y":1152},{"x":96,"y":1152}]' data-dur="71" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-384px -1056px"></i><i style="background-position:-480px -1056px"></i><i style="background-position:-576px -1056px"></i><i style="background-position:-672px -1056px"></i><i style="background-position:-0px -1152px"></i><i style="background-position:-96px -1152px"></i></div>
+    </div>
+  </section>
+  <section><h2>run-front</h2>
+    <div class="dir">
+      <div class="lbl">south <em>9f · 67ms</em></div>
+      <div class="play" data-frames='[{"x":192,"y":1152},{"x":288,"y":1152},{"x":384,"y":1152},{"x":480,"y":1152},{"x":576,"y":1152},{"x":672,"y":1152},{"x":0,"y":1248},{"x":96,"y":1248},{"x":192,"y":1248}]' data-dur="67" data-loop="true"></div>
+      <div class="strip"><i style="background-position:-192px -1152px"></i><i style="background-position:-288px -1152px"></i><i style="background-position:-384px -1152px"></i><i style="background-position:-480px -1152px"></i><i style="background-position:-576px -1152px"></i><i style="background-position:-672px -1152px"></i><i style="background-position:-0px -1248px"></i><i style="background-position:-96px -1248px"></i><i style="background-position:-192px -1248px"></i></div>
+    </div>
+  </section>
+  <section><h2>walk-front</h2>
+    <div class="dir">
+      <div class="lbl">south <em>8f · 83ms</em></div>
+      <div class="play" data-frames='[{"x":672,"y":1344},{"x":0,"y":1440},{"x":96,"y":1440},{"x":192,"y":1440},{"x":288,"y":1440},{"x":384,"y":1440},{"x":480,"y":1440},{"x":576,"y":1440}]' data-dur="83" data-loop="true"></div>
+      <div class="strip"><i style="background-position:-672px -1344px"></i><i style="background-position:-0px -1440px"></i><i style="background-position:-96px -1440px"></i><i style="background-position:-192px -1440px"></i><i style="background-position:-288px -1440px"></i><i style="background-position:-384px -1440px"></i><i style="background-position:-480px -1440px"></i><i style="background-position:-576px -1440px"></i></div>
+    </div>
+    <div class="dir">
+      <div class="lbl">south-east <em>6f · 83ms</em></div>
+      <div class="play" data-frames='[{"x":96,"y":1344},{"x":192,"y":1344},{"x":288,"y":1344},{"x":384,"y":1344},{"x":480,"y":1344},{"x":576,"y":1344}]' data-dur="83" data-loop="true"></div>
+      <div class="strip"><i style="background-position:-96px -1344px"></i><i style="background-position:-192px -1344px"></i><i style="background-position:-288px -1344px"></i><i style="background-position:-384px -1344px"></i><i style="background-position:-480px -1344px"></i><i style="background-position:-576px -1344px"></i></div>
+    </div>
+  </section>
+  <section><h2>press</h2>
+    <div class="dir">
+      <div class="lbl">south <em>6f · 83ms · once</em></div>
+      <div class="play" data-frames='[{"x":672,"y":1440},{"x":0,"y":1536},{"x":96,"y":1536},{"x":192,"y":1536},{"x":288,"y":1536},{"x":384,"y":1536}]' data-dur="83" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-672px -1440px"></i><i style="background-position:-0px -1536px"></i><i style="background-position:-96px -1536px"></i><i style="background-position:-192px -1536px"></i><i style="background-position:-288px -1536px"></i><i style="background-position:-384px -1536px"></i></div>
+    </div>
+  </section>
+  <section><h2>recover</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>5f · 100ms · once</em></div>
+      <div class="play" data-frames='[{"x":480,"y":1536},{"x":576,"y":1536},{"x":672,"y":1536},{"x":0,"y":1632},{"x":96,"y":1632}]' data-dur="100" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-480px -1536px"></i><i style="background-position:-576px -1536px"></i><i style="background-position:-672px -1536px"></i><i style="background-position:-0px -1632px"></i><i style="background-position:-96px -1632px"></i></div>
+    </div>
+  </section>
+  <section><h2>pose</h2>
+    <div class="dir">
+      <div class="lbl">east <em>1f · 1000ms · once</em></div>
+      <div class="play" data-frames='[{"x":192,"y":1632}]' data-dur="1000" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-192px -1632px"></i></div>
+    </div>
+    <div class="dir">
+      <div class="lbl">north-east <em>1f · 1000ms · once</em></div>
+      <div class="play" data-frames='[{"x":288,"y":1632}]' data-dur="1000" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-288px -1632px"></i></div>
+    </div>
+    <div class="dir">
+      <div class="lbl">north-west <em>1f · 1000ms · once</em></div>
+      <div class="play" data-frames='[{"x":384,"y":1632}]' data-dur="1000" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-384px -1632px"></i></div>
+    </div>
+    <div class="dir">
+      <div class="lbl">north <em>1f · 1000ms · once</em></div>
+      <div class="play" data-frames='[{"x":480,"y":1632}]' data-dur="1000" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-480px -1632px"></i></div>
+    </div>
+    <div class="dir">
+      <div class="lbl">south-east <em>1f · 1000ms · once</em></div>
+      <div class="play" data-frames='[{"x":576,"y":1632}]' data-dur="1000" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-576px -1632px"></i></div>
+    </div>
+    <div class="dir">
+      <div class="lbl">south-west <em>1f · 1000ms · once</em></div>
+      <div class="play" data-frames='[{"x":672,"y":1632}]' data-dur="1000" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-672px -1632px"></i></div>
+    </div>
+    <div class="dir">
+      <div class="lbl">south <em>1f · 1000ms · once</em></div>
+      <div class="play" data-frames='[{"x":0,"y":1728}]' data-dur="1000" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-0px -1728px"></i></div>
+    </div>
+    <div class="dir">
+      <div class="lbl">west <em>1f · 1000ms · once</em></div>
+      <div class="play" data-frames='[{"x":96,"y":1728}]' data-dur="1000" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-96px -1728px"></i></div>
+    </div>
+  </section>
+  <section><h2>run</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>8f · 67ms</em></div>
+      <div class="play" data-frames='[{"x":192,"y":1728},{"x":288,"y":1728},{"x":384,"y":1728},{"x":480,"y":1728},{"x":576,"y":1728},{"x":672,"y":1728},{"x":0,"y":1824},{"x":96,"y":1824}]' data-dur="67" data-loop="true"></div>
+      <div class="strip"><i style="background-position:-192px -1728px"></i><i style="background-position:-288px -1728px"></i><i style="background-position:-384px -1728px"></i><i style="background-position:-480px -1728px"></i><i style="background-position:-576px -1728px"></i><i style="background-position:-672px -1728px"></i><i style="background-position:-0px -1824px"></i><i style="background-position:-96px -1824px"></i></div>
+    </div>
+  </section>
+  <section><h2>sip</h2>
+    <div class="dir">
+      <div class="lbl">south <em>7f · 111ms · once</em></div>
+      <div class="play" data-frames='[{"x":192,"y":1824},{"x":288,"y":1824},{"x":384,"y":1824},{"x":480,"y":1824},{"x":480,"y":1824},{"x":576,"y":1824},{"x":672,"y":1824}]' data-dur="111" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-192px -1824px"></i><i style="background-position:-288px -1824px"></i><i style="background-position:-384px -1824px"></i><i style="background-position:-480px -1824px"></i><i style="background-position:-480px -1824px"></i><i style="background-position:-576px -1824px"></i><i style="background-position:-672px -1824px"></i></div>
+    </div>
+  </section>
+  <section><h2>skid</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>6f · 71ms · once</em></div>
+      <div class="play" data-frames='[{"x":0,"y":1920},{"x":96,"y":1920},{"x":192,"y":1920},{"x":288,"y":1920},{"x":384,"y":1920},{"x":480,"y":1920}]' data-dur="71" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-0px -1920px"></i><i style="background-position:-96px -1920px"></i><i style="background-position:-192px -1920px"></i><i style="background-position:-288px -1920px"></i><i style="background-position:-384px -1920px"></i><i style="background-position:-480px -1920px"></i></div>
+    </div>
+  </section>
+  <section><h2>stretch</h2>
+    <div class="dir">
+      <div class="lbl">south <em>8f · 125ms · once</em></div>
+      <div class="play" data-frames='[{"x":576,"y":1920},{"x":672,"y":1920},{"x":0,"y":2016},{"x":0,"y":2016},{"x":0,"y":2016},{"x":96,"y":2016},{"x":192,"y":2016},{"x":288,"y":2016}]' data-dur="125" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-576px -1920px"></i><i style="background-position:-672px -1920px"></i><i style="background-position:-0px -2016px"></i><i style="background-position:-0px -2016px"></i><i style="background-position:-0px -2016px"></i><i style="background-position:-96px -2016px"></i><i style="background-position:-192px -2016px"></i><i style="background-position:-288px -2016px"></i></div>
+    </div>
+  </section>
+  <section><h2>taunt</h2>
+    <div class="dir">
+      <div class="lbl">south <em>7f · 71ms · once</em></div>
+      <div class="play" data-frames='[{"x":384,"y":2016},{"x":480,"y":2016},{"x":576,"y":2016},{"x":672,"y":2016},{"x":0,"y":2112},{"x":96,"y":2112},{"x":192,"y":2112}]' data-dur="71" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-384px -2016px"></i><i style="background-position:-480px -2016px"></i><i style="background-position:-576px -2016px"></i><i style="background-position:-672px -2016px"></i><i style="background-position:-0px -2112px"></i><i style="background-position:-96px -2112px"></i><i style="background-position:-192px -2112px"></i></div>
+    </div>
+  </section>
+  <section><h2>thwip</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>8f · 56ms · once</em></div>
+      <div class="play" data-frames='[{"x":288,"y":2112},{"x":384,"y":2112},{"x":384,"y":2112},{"x":480,"y":2112},{"x":576,"y":2112},{"x":672,"y":2112},{"x":0,"y":2208},{"x":96,"y":2208}]' data-dur="56" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-288px -2112px"></i><i style="background-position:-384px -2112px"></i><i style="background-position:-384px -2112px"></i><i style="background-position:-480px -2112px"></i><i style="background-position:-576px -2112px"></i><i style="background-position:-672px -2112px"></i><i style="background-position:-0px -2208px"></i><i style="background-position:-96px -2208px"></i></div>
+    </div>
+  </section>
+  <section><h2>thwip-side</h2>
+    <div class="dir">
+      <div class="lbl">east <em>8f · 56ms · once</em></div>
+      <div class="play" data-frames='[{"x":192,"y":2208},{"x":288,"y":2208},{"x":288,"y":2208},{"x":384,"y":2208},{"x":480,"y":2208},{"x":576,"y":2208},{"x":672,"y":2208},{"x":0,"y":2304}]' data-dur="56" data-loop="false"></div>
+      <div class="strip"><i style="background-position:-192px -2208px"></i><i style="background-position:-288px -2208px"></i><i style="background-position:-288px -2208px"></i><i style="background-position:-384px -2208px"></i><i style="background-position:-480px -2208px"></i><i style="background-position:-576px -2208px"></i><i style="background-position:-672px -2208px"></i><i style="background-position:-0px -2304px"></i></div>
+    </div>
+  </section>
+  <section><h2>walk</h2>
+    <div class="dir">
+      <div class="lbl">south-east <em>8f · 83ms</em></div>
+      <div class="play" data-frames='[{"x":96,"y":2304},{"x":192,"y":2304},{"x":288,"y":2304},{"x":384,"y":2304},{"x":480,"y":2304},{"x":576,"y":2304},{"x":672,"y":2304},{"x":0,"y":2400}]' data-dur="83" data-loop="true"></div>
+      <div class="strip"><i style="background-position:-96px -2304px"></i><i style="background-position:-192px -2304px"></i><i style="background-position:-288px -2304px"></i><i style="background-position:-384px -2304px"></i><i style="background-position:-480px -2304px"></i><i style="background-position:-576px -2304px"></i><i style="background-position:-672px -2304px"></i><i style="background-position:-0px -2400px"></i></div>
+    </div>
+  </section>
+<script>
+for (const el of document.querySelectorAll('.play')) {
+  const frames = JSON.parse(el.dataset.frames);
+  const dur = +el.dataset.dur, loop = el.dataset.loop === 'true';
+  let i = 0;
+  const tick = () => {
+    const f = frames[i];
+    el.style.backgroundPosition = `-${f.x}px -${f.y}px`;
+    i++;
+    if (i >= frames.length) { if (!loop) { setTimeout(() => { i = 0; tick(); }, 700); return; } i = 0; }
+    setTimeout(tick, dur);
+  };
+  tick();
+}
+</script>

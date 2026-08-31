@@ -1,0 +1,230 @@
+{
+  "spent": 25,
+  "entries": [
+    {
+      "as": "idle",
+      "template": "breathing-idle",
+      "direction": "south-east",
+      "frames": 4,
+      "job_id": "ffe59f75-a91c-4b37-a737-2fbcc525d5b3",
+      "cost": 1,
+      "at": "2026-08-30T18:57:48.071Z"
+    },
+    {
+      "as": "walk",
+      "template": "walking-8-frames",
+      "direction": "south-east",
+      "frames": 8,
+      "job_id": "ba3ded14-0bee-4882-86b8-c3dcec761af3",
+      "cost": 1,
+      "at": "2026-08-30T18:59:03.471Z"
+    },
+    {
+      "as": "idle-front",
+      "template": "breathing-idle",
+      "direction": "south",
+      "frames": 4,
+      "job_id": "3b41cbe9-5728-4c78-9b80-50d16fdcbfc0",
+      "cost": 1,
+      "at": "2026-08-30T18:59:15.147Z"
+    },
+    {
+      "as": "run",
+      "template": "running-8-frames",
+      "direction": "south-east",
+      "frames": 8,
+      "job_id": "3aed0b69-707a-446f-8c06-3ce3bf777b26",
+      "cost": 1,
+      "at": "2026-08-30T19:00:14.623Z"
+    },
+    {
+      "as": "land",
+      "template": "crouching",
+      "direction": "south-east",
+      "frames": 5,
+      "job_id": "ff96e79c-b21b-453f-beff-71f6ac2997f8",
+      "cost": 1,
+      "at": "2026-08-30T19:01:13.732Z"
+    },
+    {
+      "as": "jump",
+      "template": "jumping-1",
+      "direction": "south-east",
+      "frames": 9,
+      "job_id": "bb4e36f8-680f-440d-9503-691ac9074618",
+      "cost": 1,
+      "at": "2026-08-30T19:02:29.055Z"
+    },
+    {
+      "as": "thwip",
+      "template": "throw-object",
+      "direction": "south-east",
+      "frames": 7,
+      "job_id": "71aad264-47cc-45f8-b4bd-7268b0af5f73",
+      "cost": 1,
+      "at": "2026-08-30T19:04:03.951Z"
+    },
+    {
+      "as": "thwip-side",
+      "template": "throw-object",
+      "direction": "east",
+      "frames": 7,
+      "job_id": "fcfa0cc9-9fac-492f-a6f4-cec5b2a880c9",
+      "cost": 1,
+      "at": "2026-08-30T19:05:06.423Z"
+    },
+    {
+      "as": "hang",
+      "template": "pull-heavy-object",
+      "direction": "east",
+      "frames": 6,
+      "job_id": "23cc3433-a0f5-4704-a8f3-d938cd645b4d",
+      "cost": 1,
+      "at": "2026-08-30T19:05:15.859Z"
+    },
+    {
+      "as": "recover",
+      "template": "getting-up",
+      "direction": "south-east",
+      "frames": 5,
+      "job_id": "b1d6a84a-93b3-4fa3-8358-2a817d319219",
+      "cost": 1,
+      "at": "2026-08-30T19:06:39.893Z"
+    },
+    {
+      "as": "faceplant",
+      "template": "falling-back-death",
+      "direction": "south-east",
+      "frames": 7,
+      "job_id": "8d0c49ca-17b5-4b78-8835-e5a370d9cc41",
+      "cost": 1,
+      "at": "2026-08-30T19:06:54.396Z"
+    },
+    {
+      "as": "alert",
+      "template": "fight-stance-idle-8-frames",
+      "direction": "south-east",
+      "frames": 8,
+      "job_id": "e2f01847-c358-4cf9-95aa-bceb9789ef75",
+      "cost": 1,
+      "at": "2026-08-30T19:08:15.314Z"
+    },
+    {
+      "as": "skid",
+      "template": "running-slide",
+      "direction": "south-east",
+      "frames": 6,
+      "job_id": "b58470fe-8d7d-4af5-b6c3-d3cd9db09020",
+      "cost": 1,
+      "at": "2026-08-30T19:08:39.843Z"
+    },
+    {
+      "as": "flip",
+      "template": "backflip",
+      "direction": "south-east",
+      "frames": 10,
+      "job_id": "fc3fd31d-1198-4814-8641-e72d150d9633",
+      "cost": 1,
+      "at": "2026-08-30T19:09:52.137Z"
+    },
+    {
+      "as": "bored",
+      "template": "sad-walk",
+      "direction": "south-east",
+      "frames": 8,
+      "job_id": "ae480737-a81b-442b-a312-aaba26f3fb46",
+      "cost": 1,
+      "at": "2026-08-30T19:11:59.253Z"
+    },
+    {
+      "as": "press",
+      "template": "pushing",
+      "direction": "south",
+      "frames": 6,
+      "job_id": "85eed3d9-2b5b-4377-b2cd-69ab15f9b33c",
+      "cost": 1,
+      "at": "2026-08-30T19:12:10.905Z"
+    },
+    {
+      "as": "crawl",
+      "template": "crouched-walking",
+      "direction": "south-east",
+      "frames": 6,
+      "job_id": "b472a329-7553-4908-b285-e38d44023d7b",
+      "cost": 1,
+      "at": "2026-08-30T19:13:22.829Z"
+    },
+    {
+      "as": "creep",
+      "template": "scary-walk",
+      "direction": "south-east",
+      "frames": 8,
+      "job_id": "fd18ec6a-97e6-47b9-86dc-3039974a611e",
+      "cost": 1,
+      "at": "2026-08-30T19:14:11.370Z"
+    },
+    {
+      "as": "grab",
+      "template": "picking-up",
+      "direction": "south",
+      "frames": 5,
+      "job_id": "09ea6294-4388-46d1-9845-8ae0c567a150",
+      "cost": 1,
+      "at": "2026-08-30T19:15:11.015Z"
+    },
+    {
+      "as": "taunt",
+      "template": "high-kick",
+      "direction": "south",
+      "frames": 7,
+      "job_id": "1c842d64-d4f2-4e6f-b208-872f970950a5",
+      "cost": 1,
+      "at": "2026-08-30T19:15:35.689Z"
+    },
+    {
+      "as": "ouch",
+      "template": "taking-punch",
+      "direction": "south",
+      "frames": 6,
+      "job_id": "4914f52a-b6ee-47ac-904f-6bfa7c8bca5e",
+      "cost": 1,
+      "at": "2026-08-30T19:16:09.861Z"
+    },
+    {
+      "as": "leap",
+      "template": "running-jump",
+      "direction": "south-east",
+      "frames": 8,
+      "job_id": "aaceca0a-fe36-4753-a1bf-b99cf2af9c9b",
+      "cost": 1,
+      "at": "2026-08-30T19:16:59.489Z"
+    },
+    {
+      "as": "sip",
+      "template": "drinking",
+      "direction": "south",
+      "frames": 6,
+      "job_id": "00ac028a-a516-4dd6-9491-90dbc4567a9e",
+      "cost": 1,
+      "at": "2026-08-30T19:22:14.385Z"
+    },
+    {
+      "as": "stretch",
+      "template": "pull-heavy-object",
+      "direction": "south",
+      "frames": 6,
+      "job_id": "95dbda03-4182-4ea9-8faf-f1e541f48563",
+      "cost": 1,
+      "at": "2026-08-30T19:22:50.768Z"
+    },
+    {
+      "as": "idle-side",
+      "template": "breathing-idle",
+      "direction": "east",
+      "frames": 4,
+      "job_id": "0de8effb-af78-4768-838e-a6a66203b842",
+      "cost": 1,
+      "at": "2026-08-30T19:23:13.178Z"
+    }
+  ]
+}
