@@ -26,8 +26,15 @@ export const NEUTRAL: Pose = { squashX: 1, squashY: 1, rotation: 0, pivotY: 0 };
 
 /** How long the landing compression takes to spring back, in seconds. */
 const LAND_RECOVER = 0.22;
-const MAX_SQUASH = 0.26;
-const MAX_STRETCH = 0.18;
+/**
+ * Kept deliberately subtle. The `land` clip is already a baked crouch-impact
+ * pose — this squash stacks on top of that art, not in place of it, so a value
+ * tuned for a bare rectangle (a third of the body width) reads as a glitch on
+ * top of real character art. A hard fall skips this entirely and cuts straight
+ * to the `faceplanting` clip instead, which carries the whole read on its own.
+ */
+const MAX_SQUASH = 0.12;
+const MAX_STRETCH = 0.08;
 
 export class PoseModulator {
   /** 0..1, set on impact and decaying */

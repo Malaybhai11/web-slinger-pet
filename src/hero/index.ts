@@ -36,8 +36,26 @@ import { Quipper, labelOf, landTrigger, type Trigger, type QuipContext } from '.
 import { Sounds } from './audio/sounds.js';
 import { Sfx } from './audio/effects.js';
 
-/** Performances whose clip loops, so they need a duration rather than an end. */
-const LOOPING_PERFORMANCE: ReadonlySet<HeroState> = new Set<HeroState>(['sitting', 'alerting']);
+/**
+ * How long each performance holds, in seconds, as a backstop.
+ *
+ * A one-shot clip normally ends itself — `animator.finished()` fires when it
+ * reaches its last frame — but several states resolve to a *looping* clip
+ * (perching and sitting-on-a-button both use the idle-side loop; shadow-boxing
+ * reuses the looping fight-stance) and a loop never reports finished. Rather
+ * than track which specific clip each state happens to resolve to today (and
+ * re-track it every time a fallback chain in clips.ts changes), every
+ * performance gets a duration cap: a one-shot almost always ends well before
+ * its cap via `finished()`, and a loop rides the cap out.
+ */
+const PERFORM_MAX: Partial<Record<HeroState, number>> = {
+  sitting: 4,
+  alerting: 3.5,
+  boxing: 3.5,
+  mimicking: 1.2,   // thwip is a ~0.5s gesture; this only backstops a fallback
+  faceplanting: 4,
+};
+const PERFORM_DEFAULT = 4;
 
 class HeroSystem implements MoveEvents, ShootEvents {
   private hero = new Hero();
@@ -297,7 +315,7 @@ class HeroSystem implements MoveEvents, ShootEvents {
     this.animator.play(choice.clip, this.facingDir(choice.profile), { restart: true });
     // looping fallbacks (perch, watch) need a hold time; one-shots end sooner
     // than this on their own and the timer never bites
-    this.performT = LOOPING_PERFORMANCE.has(state) ? 2.5 + Math.random() * 2.5 : 4;
+    this.performT = (PERFORM_MAX[state] ?? PERFORM_DEFAULT) + Math.random() * 0.6;
   }
 
   private endPerformance(): void {
@@ -344,14 +362,22 @@ class HeroSystem implements MoveEvents, ShootEvents {
     this.sfx.land(impact);
     this.shake.trigger(impact);
     this.interactions.land(surf);
-    this.poser.land(impact);
     this.needs.notice(0.15);
 
-    // a hard landing knocks him flat; an ordinary one just gets a remark
+    // A hard landing cuts straight to the faceplant art, in this same physics
+    // step. It used to schedule perform('faceplanting') on a setTimeout 60ms
+    // later — a real-time timer racing the fixed-step physics loop — so the
+    // `landing` clip would flash on screen for a couple of frames and then
+    // get yanked out from under itself. Calling perform() synchronously here
+    // means the very next rendered frame is already the faceplant, with no
+    // intermediate flash to cut through.
     if (impact > 780) {
       this.say('big-fall', {}, 0.8);
-      window.setTimeout(() => this.perform('faceplanting'), 60);
+      this.perform('faceplanting');
     } else {
+      // ordinary landings keep the squash — the faceplant's own art carries
+      // the hard-fall read on its own and doesn't need it stacked on top
+      this.poser.land(impact);
       const label = labelOf(surf.el);
       this.say(landTrigger(surf.el.tagName), { label, tag: surf.el.tagName }, 0.45);
     }

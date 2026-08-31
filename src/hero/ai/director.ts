@@ -21,7 +21,8 @@ import type { Trigger, QuipContext } from './quips.js';
 
 export type GoalId =
   | 'patrol' | 'hop' | 'swing' | 'perch' | 'rest'
-  | 'stretch' | 'investigate' | 'watch' | 'flourish' | 'press' | 'sip';
+  | 'stretch' | 'investigate' | 'watch' | 'flourish' | 'press'
+  | 'phone' | 'box' | 'mimic';
 
 export interface DirectorHost {
   hero: Hero;
@@ -54,9 +55,17 @@ const MIN_GOAL = 0.5;
 /** Seconds of hands-off after any real user input. */
 const MANUAL_GRACE = 4;
 
+// Travel goals (patrol/hop/swing) have long cooldowns on purpose: left alone,
+// he should spend most of his time doing something in place — checking his
+// phone, throwing a few practice punches, sitting on whatever he's standing
+// on — and only occasionally go somewhere. A cooldown of 1-2.5s (the original
+// values) meant a travel goal was eligible again almost the instant the last
+// one finished, which reads as restless wandering rather than a pet with a
+// personality.
 const COOLDOWNS: Record<GoalId, number> = {
-  patrol: 1, hop: 2.5, swing: 6, perch: 8, rest: 12,
-  stretch: 14, investigate: 5, watch: 6, flourish: 16, press: 10, sip: 25,
+  patrol: 9, hop: 14, swing: 20, perch: 12, rest: 10,
+  stretch: 16, investigate: 5, watch: 8, flourish: 18, press: 12,
+  phone: 15, box: 16, mimic: 12,
 };
 
 export class Director {
@@ -151,41 +160,56 @@ export class Director {
     };
 
     if (canMove) {
-      // wander the surface he's on
-      add('patrol', 0.35 + needs.boredom * 0.5 + needs.energy * 0.2, () =>
+      // Travel goals: modest baseline scores (they still happen — he's not
+      // pinned in place — but the idle-activity pool below is scored to win
+      // the softmax roll more often than not, which is the actual behaviour
+      // change: by default he stays where he is and does something, and only
+      // sometimes goes somewhere.
+      add('patrol', 0.15 + needs.boredom * 0.35 + needs.energy * 0.15, () =>
         this.makePatrol());
 
-      // hop to a nearby button or heading
-      add('hop', 0.4 + needs.energy * 0.6 + needs.curiosity * 0.3, () =>
+      add('hop', 0.2 + needs.energy * 0.5 + needs.curiosity * 0.25, () =>
         this.makeTravel('hop', map.candidates(hero.x, hero.y, 340, {
           types: ['button', 'link', 'heading', 'card', 'nav'],
           exclude: here, minDistance: 40,
         })));
 
-      // web-swing somewhere further away — the showpiece, so it wants energy
-      add('swing', (needs.energy - 0.35) * 1.6 + needs.boredom * 0.4, () =>
+      // web-swing somewhere further away — the showpiece, so it still wants
+      // real energy, not just boredom
+      add('swing', (needs.energy - 0.45) * 1.6 + needs.boredom * 0.25, () =>
         this.makeTravel('swing', map.candidates(hero.x, hero.y, 900, {
           types: ['heading', 'nav', 'card', 'image', 'media'],
           exclude: here, minDistance: 180,
         })));
 
-      add('perch', 0.3 + needs.boredom * 0.3 - needs.energy * 0.2, () =>
+      // sitting somewhere — a heading, a nav bar, or a button. This is the
+      // "sitting on buttons" behaviour: buttons are just another perch target.
+      add('perch', 0.35 + needs.boredom * 0.3 - needs.energy * 0.2, () =>
         this.makeTravel('perch', map.candidates(hero.x, hero.y, 400, {
-          types: ['heading', 'nav'], exclude: here,
+          types: ['heading', 'nav', 'button'], exclude: here,
         })));
 
-      add('press', 0.2 + needs.curiosity * 0.7, () =>
+      add('press', 0.15 + needs.curiosity * 0.6, () =>
         this.makeTravel('press', map.candidates(hero.x, hero.y, 260, {
           types: ['button'], exclude: null,
         })));
 
-      // stay put and do something expressive
-      add('rest', (0.5 - needs.energy) * 1.4, () => this.makeInPlace('rest'));
-      add('stretch', 0.2 + needs.boredom * 0.6 - needs.energy * 0.3, () =>
+      // ---- the idle-activity pool: what he does when he isn't going
+      // anywhere. Each has a solid baseline score so it fires reliably rather
+      // than only at the extremes of the needs model.
+      add('rest', 0.4 + (0.5 - needs.energy) * 1.1, () => this.makeInPlace('rest'));
+      add('stretch', 0.45 + needs.boredom * 0.4 - needs.energy * 0.2, () =>
         this.makeInPlace('stretch'));
-      add('flourish', (needs.energy - 0.5) * 1.2 + needs.sociability * 0.5, () =>
+      add('flourish', 0.35 + needs.sociability * 0.4 + Math.max(0, needs.energy - 0.4) * 0.6, () =>
         this.makeInPlace('flourish'));
-      add('sip', needs.boredom * 0.45 - needs.energy * 0.2, () => this.makeInPlace('sip'));
+      // checks his phone, reads a joke off it
+      add('phone', 0.55 + needs.boredom * 0.4 - needs.energy * 0.15, () =>
+        this.makeInPlace('phone'));
+      // shadow-boxes in place — a boxer's guard, thrown a few times
+      add('box', 0.5 + needs.energy * 0.3 + needs.boredom * 0.2, () =>
+        this.makeInPlace('box'));
+      // mimics a web-shot with no real web fired
+      add('mimic', 0.45 + needs.curiosity * 0.4, () => this.makeInPlace('mimic'));
 
       if (cursor) {
         const d = Math.hypot(cursor.x - hero.x, cursor.y - hero.y);
@@ -324,9 +348,17 @@ export class Director {
         this.host.perform('taunting');
         this.host.say('flip', {}, 0.5);
         break;
-      case 'sip':
+      case 'phone':
         this.host.perform('sipping');
-        this.host.say('idle-long', {}, 0.35);
+        this.host.say('phone-check', {}, 0.7);
+        break;
+      case 'box':
+        this.host.perform('boxing');
+        this.host.say('shadow-box', {}, 0.6);
+        break;
+      case 'mimic':
+        this.host.perform('mimicking');
+        this.host.say('mimic-web', {}, 0.6);
         break;
       case 'watch':
         this.host.perform('alerting');

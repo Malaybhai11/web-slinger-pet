@@ -50,6 +50,13 @@ export function clipFor(state: HeroState): ClipChoice {
     case 'recovering':  return { clip: pickClip('recover', 'idle'), profile: false };
     case 'skidding':    return { clip: pickClip('skid', 'land'), profile: false };
     case 'alerting':    return { clip: pickClip('alert', 'idle'), profile: false };
+    // no punch-combo art exists — the fight-stance loop already reads as a
+    // boxer's guard on its own, so shadow-boxing reuses it as a distinct
+    // performance (its own duration and quips) rather than buying new art
+    case 'boxing':      return { clip: pickClip('alert', 'idle-front'), profile: false };
+    // the web-throw motion, played standalone with no real web line — this is
+    // what "mimicking a web-shot" actually is
+    case 'mimicking':   return { clip: pickClip('thwip', 'idle-front'), profile: false };
     default:            return { clip: pickClip('idle'), profile: false };
   }
 }
