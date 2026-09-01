@@ -29,11 +29,13 @@ export type HeroState =
   // performance states — the director plays these when nothing else is urgent.
   // They are grounded and interruptible; none of them move him.
   | 'stretching' | 'sitting' | 'taunting' | 'pressing' | 'sipping'
+  | 'mimicking' | 'boxing'
   | 'faceplanting' | 'recovering' | 'skidding' | 'alerting';
 
 /** States that are a one-shot performance rather than a movement mode. */
 export const PERFORMANCE: ReadonlySet<HeroState> = new Set<HeroState>([
   'stretching', 'sitting', 'taunting', 'pressing', 'sipping',
+  'mimicking', 'boxing',
   'faceplanting', 'recovering', 'skidding', 'alerting',
 ]);
 

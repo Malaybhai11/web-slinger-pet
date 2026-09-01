@@ -54,6 +54,7 @@ const STATES = [
   'idle', 'walking', 'running', 'jumping', 'falling', 'landing',
   'crouching', 'swinging', 'clinging', 'stretching', 'sitting',
   'taunting', 'pressing', 'faceplanting', 'recovering', 'skidding', 'alerting',
+  'sipping', 'boxing', 'mimicking',
 ];
 
 console.log('forcing each state:');

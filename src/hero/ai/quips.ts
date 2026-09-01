@@ -11,7 +11,8 @@
 export type Trigger =
   | 'greet' | 'land-button' | 'land-heading' | 'land-link' | 'land-input'
   | 'perch' | 'idle-long' | 'bored' | 'fast-scroll' | 'miss' | 'big-fall'
-  | 'swing-start' | 'stuck' | 'clicked-near' | 'press' | 'flip';
+  | 'swing-start' | 'stuck' | 'clicked-near' | 'press' | 'flip'
+  | 'phone-check' | 'shadow-box' | 'mimic-web';
 
 export interface QuipContext {
   /** trimmed text of the element he's involved with, if any */
@@ -108,6 +109,30 @@ const POOLS: Record<Trigger, string[]> = {
     'stuck the landing',
     'ten out of ten',
     'do not try that on a real page',
+  ],
+  'phone-check': [
+    'checking my notifications',
+    'reading a joke. it is not that good',
+    'my battery is at 4% and i have 400 texts',
+    'someone tag me in a meme',
+    'brb, texting aunt may',
+    'this app wants my location. no',
+    'jameson left another voicemail',
+  ],
+  'shadow-box': [
+    'shadow boxing the concept of Tuesday',
+    'training arms, mostly for hugging',
+    'one two, thwip',
+    'do not tell doc ock i skipped leg day',
+    'my invisible opponent is winning',
+    'footwork first, jokes second',
+  ],
+  'mimic-web': [
+    'practicing my thwip',
+    "no web fluid wasted, this one's just for fun",
+    'imaginary bad guy, real good aim',
+    'reload noise goes here',
+    'still got it',
   ],
 };
 
