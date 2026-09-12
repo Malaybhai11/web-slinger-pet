@@ -9,6 +9,7 @@ import { stepGround, stepAir, stepCling, type MoveEvents } from './character/mov
 import { WebShooter, type ShootEvents } from './character/web-shoot.js';
 import { castWeb, type WebAnchor } from './physics/raycast.js';
 import { sweepLanding } from './physics/collision.js';
+import { JUMP_IMPULSE } from './physics/forces.js';
 import {
   SurfaceMap,
   topPage,
@@ -26,7 +27,7 @@ import { Flash } from './camera/flash.js';
 import { Animator } from './animation/animator.js';
 import { Particles } from './animation/particles.js';
 import { loadAtlas, getSpriteMode } from './animation/sprite.js';
-import { clipFor } from './animation/clips.js';
+import { clipFor, pickClip } from './animation/clips.js';
 import { dirFromFacing, type Dir8 } from './animation/direction.js';
 import { PoseModulator, NEUTRAL, type Pose } from './animation/pose.js';
 import { Renderer } from './render/renderer.js';
@@ -58,6 +59,20 @@ const PERFORM_MAX: Partial<Record<HeroState, number>> = {
   faceplanting: 4,
 };
 const PERFORM_DEFAULT = 4;
+
+/**
+ * How long after attaching a web he plays the cast/pull motion before
+ * settling into the hang loop. Without this the swing state snapped straight
+ * to the idle hang pose the instant the web attached — no read of actually
+ * throwing and catching the line, just a teleport into a loop.
+ */
+const SWING_CAST_WINDOW = 0.22;
+/**
+ * Tap jump mid-swing to hop off with a boost, instead of only being able to
+ * let go via a second click. A real swing-off, not just an early release —
+ * this is the mechanic every web-swinging game has and this one didn't.
+ */
+const SWING_HOP_BOOST = JUMP_IMPULSE * 0.6;
 
 class HeroSystem implements MoveEvents, ShootEvents {
   private hero = new Hero();
@@ -225,12 +240,29 @@ class HeroSystem implements MoveEvents, ShootEvents {
           hero.transition('falling');
           break;
         }
+        // tap jump mid-swing: a deliberate hop off with a boost, not just
+        // a release. Inherits the swing's current tangential velocity so it
+        // reads as leaving the arc, not a stop-and-jump.
+        if (hero.jumpQueued) {
+          const v = p.velocity();
+          hero.vx = v.vx;
+          hero.vy = Math.min(v.vy, 0) + SWING_HOP_BOOST;
+          hero.pendulum = null;
+          hero.transition('jumping');
+          this.onJump();
+          break;
+        }
         const prevFeet = hero.y;
         const r = p.step(dt, input);
         hero.x = r.x;
         hero.y = r.y + hero.height; // pendulum drives the hand; feet ride below
         hero.vx = r.vx;
         hero.vy = r.vy;
+        // face the direction he's actually swinging, not whichever way he
+        // happened to be facing when he cast the web. A small deadzone
+        // around the arc's momentary vx≈0 crossing (the bottom of the swing)
+        // keeps him from flickering direction right as he passes through it.
+        if (Math.abs(r.vx) > 24) hero.facing = r.vx > 0 ? 1 : -1;
         // touching ground while swinging → land (PRD §6.1)
         if (r.vy > 0) {
           const surf = sweepLanding(this.map, hero.x, prevFeet, hero.y);
@@ -328,13 +360,19 @@ class HeroSystem implements MoveEvents, ShootEvents {
     }
 
     const hero = this.hero;
-    const choice = clipFor(hero.state);
+    // the first instant of a swing plays the cast/pull motion rather than
+    // snapping straight into the hang loop — see SWING_CAST_WINDOW
+    const choice = hero.state === 'swinging' && hero.stateT < SWING_CAST_WINDOW
+      ? { clip: pickClip('thwip-side', 'thwip', 'hang'), profile: true }
+      : clipFor(hero.state);
     this.animator.play(choice.clip, this.facingDir(choice.profile));
     // gait speed tracks how fast he is actually moving, so the feet don't skate
     this.animator.setSpeed(
       hero.state === 'walking' || hero.state === 'running'
         ? Math.max(0.6, Math.min(2, Math.abs(hero.vx) / 190))
-        : 1,
+        : hero.state === 'swinging' && hero.pendulum
+          ? Math.max(0.7, Math.min(1.8, Math.abs(hero.pendulum.angVel) / 1.8))
+          : 1,
     );
     this.animator.update(dtMs);
 

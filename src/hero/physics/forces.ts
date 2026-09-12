@@ -19,6 +19,12 @@ export const SWING_TENSION = 1800;   // spring constant for pendulum radius
 export const SWING_DAMPING = 0.995;  // energy loss per frame on swing
 export const SWING_MAX = 400;        // px — web can't stretch beyond this
 export const SWING_MIN = 80;         // px — web can't compress below this
+// without this, holding the pump direction for several continuous seconds
+// (easy for the director to do on a long travel goal) ramps the pendulum
+// toward a full vertical loop around the anchor — pump adds a fixed amount
+// of angular velocity every tick while damping only removes a fraction of
+// whatever's already there, so there is no natural equilibrium below "fast"
+export const SWING_MAX_ANGVEL = 3.4; // rad/s — caps pump-fuelled runaway spin
 
 /** acceleration used to reach target ground speed responsively */
 export const GROUND_ACCEL = 2600;    // px/s²

@@ -60,7 +60,10 @@ const STATES = [
 console.log('forcing each state:');
 for (const s of STATES) {
   await page.evaluate((st) => window.__hero.force(st), s);
-  await page.waitForTimeout(200);   // let a couple of animation frames play
+  // swinging plays a brief cast/pull motion before settling into the hang
+  // loop (SWING_CAST_WINDOW in index.ts) — wait it out so this still
+  // captures the steady swing pose rather than the cast frame
+  await page.waitForTimeout(s === 'swinging' ? 320 : 200);
   const d = await shotHero(s);
   console.log(`  ${s.padEnd(14)} clip=${String(d.clip).padEnd(12)} dir=${String(d.dir).padEnd(11)} frame=${d.frame}`);
 }

@@ -11,6 +11,7 @@ import {
   SWING_DAMPING,
   SWING_MAX,
   SWING_MIN,
+  SWING_MAX_ANGVEL,
 } from './forces.js';
 
 export interface SwingInput {
@@ -37,7 +38,11 @@ export class Pendulum {
     // project the linear velocity onto the tangent → angular velocity
     const tx = -Math.sin(this.angle);
     const ty = Math.cos(this.angle);
-    this.angVel = (vx * tx + vy * ty) / this.radius;
+    const projected = (vx * tx + vy * ty) / this.radius;
+    // a fast fall caught on a short web (e.g. MAX_FALL at SWING_MIN radius)
+    // projects to a wildly higher angular speed than any pumped swing could
+    // reach — same cap applies so an attach never out-spins the swing itself
+    this.angVel = Math.max(-SWING_MAX_ANGVEL, Math.min(SWING_MAX_ANGVEL, projected));
   }
 
   /**
@@ -56,6 +61,8 @@ export class Pendulum {
 
     // 3. damping (energy loss per frame, framerate-normalized)
     this.angVel *= Math.pow(SWING_DAMPING, dt * 60);
+    // cap it — pump has no natural ceiling of its own (see SWING_MAX_ANGVEL)
+    this.angVel = Math.max(-SWING_MAX_ANGVEL, Math.min(SWING_MAX_ANGVEL, this.angVel));
 
     // 4. no input → web retracts, pulling the hero toward the anchor (PRD §4.4)
     if (pump === 0) {
