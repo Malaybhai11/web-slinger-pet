@@ -22,6 +22,7 @@ import { Mouse } from './input/mouse.js';
 import { Touch } from './input/touch.js';
 import { CameraFollow } from './camera/follow.js';
 import { CameraShake } from './camera/shake.js';
+import { Flash } from './camera/flash.js';
 import { Animator } from './animation/animator.js';
 import { Particles } from './animation/particles.js';
 import { loadAtlas, getSpriteMode } from './animation/sprite.js';
@@ -30,6 +31,7 @@ import { dirFromFacing, type Dir8 } from './animation/direction.js';
 import { PoseModulator, NEUTRAL, type Pose } from './animation/pose.js';
 import { Renderer } from './render/renderer.js';
 import { Bubble } from './render/bubble.js';
+import { Villain } from './render/villain.js';
 import { Director } from './ai/director.js';
 import { Needs } from './ai/needs.js';
 import { Quipper, labelOf, landTrigger, type Trigger, type QuipContext } from './ai/quips.js';
@@ -66,6 +68,7 @@ class HeroSystem implements MoveEvents, ShootEvents {
   private touch = new Touch();
   private follow = new CameraFollow();
   private shake = new CameraShake();
+  private flashFx = new Flash();
   private animator = new Animator();
   private particles = new Particles();
   private renderer = new Renderer();
@@ -86,6 +89,16 @@ class HeroSystem implements MoveEvents, ShootEvents {
     perform: (s) => this.perform(s),
     shootAt: (x, y) => this.shooter.shoot(this.hero, x, y, this),
     releaseWeb: () => this.shooter.release(this.hero, this),
+  });
+  private villain = new Villain({
+    hero: this.hero,
+    perform: (s, o) => this.perform(s, o),
+    say: (t, ctx, chance) => this.say(t, ctx, chance),
+    shake: (i) => this.shake.trigger(i),
+    flash: (p) => this.flashFx.trigger(p),
+    spark: (x, y) => this.particles.spawnSparkle(x, y),
+    punchSfx: () => this.sfx.punch(),
+    koSfx: () => this.sfx.ko(),
   });
   private engine = new Engine(
     (dt) => this.step(dt),
@@ -108,6 +121,10 @@ class HeroSystem implements MoveEvents, ShootEvents {
   private frozen: HeroState | null = null;
   /** seconds left on the current performance before it is cut short */
   private performT = 0;
+  /** symbiote rage mode: a timed palette-swap, provoked by clicking on him repeatedly */
+  private symbiote = false;
+  private symbioteT = 0;
+  private clickTimes: number[] = [];
 
   start(): void {
     this.map.rebuild();
@@ -119,6 +136,14 @@ class HeroSystem implements MoveEvents, ShootEvents {
     this.keyboard.attach(unlock);
     this.mouse.attach((x, y) => this.onClick(x, y), unlock);
     this.touch.attach((x, y) => this.onTap(x, y), unlock);
+    // a secret-ish summon: press V to make him fight something right now,
+    // rather than waiting on the rare autonomous trigger
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyV' && !e.repeat) {
+        unlock();
+        this.villain.forceTrigger();
+      }
+    });
     window.addEventListener('load', () => this.map.rebuild());
     this.lastScrollY = window.scrollY;
     this.scanner.start();
@@ -140,10 +165,13 @@ class HeroSystem implements MoveEvents, ShootEvents {
     if (manual) this.director.userTookOver();
 
     this.director.step(dt);
+    this.villain.step(dt, this.director.autonomous && hero.grounded && !hero.performing);
+    this.director.setEncounterHold(this.villain.active);
     this.poser.step(dt);
     this.quipper.step(dt);
     this.bubble.step(dt);
     this.watchScroll(dt);
+    this.stepSymbiote(dt);
 
     const ai = this.director.input;
     const auto = this.director.autonomous;
@@ -234,6 +262,7 @@ class HeroSystem implements MoveEvents, ShootEvents {
     const sh = this.shake.step(dt);
     this.renderer.shakeX = sh.x;
     this.renderer.shakeY = sh.y;
+    this.renderer.flash = this.flashFx.step(dt);
 
     // aim hint follows the cursor
     this.shooter.aimX = this.mouse.x;
@@ -253,6 +282,35 @@ class HeroSystem implements MoveEvents, ShootEvents {
         this.scrollWatch = 3;
       }
     }
+  }
+
+  /**
+   * Symbiote rage mode: a timed palette-swap (see sprite.ts's recolor), not
+   * new art or a new state. While it runs he's simply kept charged — energy
+   * nudged up each tick — so the existing director scoring naturally favours
+   * the energetic goals (box, swing, patrol) on its own; nothing here reaches
+   * into director.ts to force a specific behaviour.
+   */
+  private stepSymbiote(dt: number): void {
+    if (!this.symbiote) return;
+    this.needs.energy = Math.min(1, this.needs.energy + dt * 0.05);
+    this.symbioteT -= dt;
+    if (this.symbioteT <= 0) {
+      this.symbiote = false;
+      this.quipper.reset();
+      this.say('symbiote-off', {}, 1);
+    }
+  }
+
+  private triggerSymbiote(): void {
+    this.symbiote = true;
+    this.symbioteT = 11 + Math.random() * 3;
+    this.needs.energy = Math.min(1, this.needs.energy + 0.5);
+    this.needs.boredom = 0;
+    this.sfx.surge();
+    this.shake.trigger(260);
+    this.quipper.reset();
+    this.say('symbiote-on', {}, 1);
   }
 
   // ------------------------------------------------ render (per rAF)
@@ -293,7 +351,7 @@ class HeroSystem implements MoveEvents, ShootEvents {
 
     this.renderer.render(
       hero, this.shooter, this.animator, this.particles, this.map, timeMs,
-      { pose, bubble: this.bubble, drawX, drawY },
+      { pose, bubble: this.bubble, drawX, drawY, symbiote: this.symbiote, villain: this.villain },
     );
   }
 
@@ -306,8 +364,15 @@ class HeroSystem implements MoveEvents, ShootEvents {
   }
 
   // ------------------------------------------------ performances
-  private perform(state: HeroState): void {
-    if (this.hero.performing || !this.hero.grounded) return;
+  /**
+   * `force` bypasses the "already performing" guard only — the villain
+   * encounter chains several performances back to back (guard pose per
+   * punch beat, then the victory taunt) and each call still needs to reset
+   * the clip and the expiry timer. Grounding is never bypassed.
+   */
+  private perform(state: HeroState, opts: { force?: boolean } = {}): void {
+    if (!this.hero.grounded) return;
+    if (this.hero.performing && !opts.force) return;
     this.hero.vx = 0;
     this.hero.transition(state);
     this.performing = true;
@@ -340,9 +405,17 @@ class HeroSystem implements MoveEvents, ShootEvents {
   private onClick(x: number, y: number): void {
     this.director.userTookOver();
     this.needs.socialise(0.35);
+    const dist = Math.hypot(x - this.hero.x, y - this.hero.y);
     // a click landing close to him gets a reaction rather than a web
-    if (Math.hypot(x - this.hero.x, y - this.hero.y) < 70) {
-      this.say('clicked-near', {}, 0.5);
+    if (dist < 70) this.say('clicked-near', {}, 0.5);
+    // five clicks on him within 2.5s — provoke the symbiote rage mode
+    if (dist < 90 && !this.symbiote) {
+      const now = performance.now();
+      this.clickTimes = [...this.clickTimes, now].filter((t) => now - t < 2500);
+      if (this.clickTimes.length >= 5) {
+        this.clickTimes = [];
+        this.triggerSymbiote();
+      }
     }
     this.shooter.shoot(this.hero, x, y, this);
   }
@@ -490,6 +563,8 @@ class HeroSystem implements MoveEvents, ShootEvents {
       fps: Math.round(1000 / this.frameMs),
       degraded: this.degraded,
       sprites: getSpriteMode(),
+      villain: this.villain.debugPhase(),
+      symbiote: this.symbiote,
       ...this.director.debug(),
     };
   }
@@ -528,6 +603,16 @@ class HeroSystem implements MoveEvents, ShootEvents {
   talk(text: string): void {
     this.bubble.say(text, 2.5);
   }
+
+  /** QA hook: summon the villain encounter right now, same as pressing V. */
+  spawnVillain(): boolean {
+    return this.villain.forceTrigger();
+  }
+
+  /** QA hook: trigger symbiote rage mode right now, same as the click-streak. */
+  spawnSymbiote(): void {
+    if (!this.symbiote) this.triggerSymbiote();
+  }
 }
 
 async function boot(): Promise<void> {
@@ -545,6 +630,8 @@ async function boot(): Promise<void> {
     setAuto: (on: boolean) => system.setAuto(on),
     reset: () => system.reset(),
     talk: (t: string) => system.talk(t),
+    spawnVillain: () => system.spawnVillain(),
+    spawnSymbiote: () => system.spawnSymbiote(),
   };
   system.start();
 }

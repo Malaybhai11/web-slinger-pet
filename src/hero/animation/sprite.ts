@@ -21,6 +21,58 @@ export const SCALE = 2;
 let atlas: HTMLImageElement | null = null;
 let failed = false;
 let dpr = 1;
+let symbioteAtlas: HTMLCanvasElement | null = null;
+
+/**
+ * Builds the "symbiote" recolor of the atlas — a runtime palette swap, not new
+ * art. The source palette is small and unblended (pixel art, no anti-aliasing:
+ * 48 distinct colours across the whole sheet), so a per-pixel classification
+ * into red-dominant / blue-dominant / white / black is exact, not a guess.
+ * Red (the mask and torso) and blue (the legs) both crush down toward a near-
+ * black purple, with per-pixel luminance preserved as brightness — so the
+ * shading already baked into the art still reads as shading, just inked out.
+ * White (the eyes) and black (the outlines) are left alone; Venom's eyes are
+ * white too, so this needs nothing extra to read as a rage-mode costume swap.
+ * Computed once, lazily, and cached — every subsequent frame is a plain blit.
+ */
+function buildSymbioteAtlas(): HTMLCanvasElement | null {
+  if (!atlas) return null;
+  const w = atlas.naturalWidth || atlas.width;
+  const h = atlas.naturalHeight || atlas.height;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const c = canvas.getContext('2d');
+  if (!c) return null;
+  c.imageSmoothingEnabled = false;
+  c.drawImage(atlas, 0, 0);
+  const img = c.getImageData(0, 0, w, h);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const a = d[i + 3];
+    if (a < 10) continue;
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    if ((r > 190 && g > 190 && b > 190) || (r < 40 && g < 40 && b < 40)) continue;
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    if (r >= g && r >= b) {
+      d[i] = 10 + lum * 0.22;
+      d[i + 1] = 6 + lum * 0.1;
+      d[i + 2] = 16 + lum * 0.3;
+    } else {
+      d[i] = 6 + lum * 0.08;
+      d[i + 1] = 6 + lum * 0.08;
+      d[i + 2] = 12 + lum * 0.28;
+    }
+  }
+  c.putImageData(img, 0, 0);
+  return canvas;
+}
+
+/** Lazily built and cached — call freely, the recolor only runs once. */
+export function getSymbioteAtlas(): HTMLCanvasElement | HTMLImageElement | null {
+  if (!symbioteAtlas) symbioteAtlas = buildSymbioteAtlas();
+  return symbioteAtlas ?? atlas;
+}
 
 export function setPixelRatio(v: number): void {
   dpr = v;
@@ -68,6 +120,8 @@ export interface DrawOptions {
   squashY?: number;
   /** overall opacity */
   alpha?: number;
+  /** draw from the recolored (symbiote) atlas instead of the real one */
+  symbiote?: boolean;
 }
 
 /** Snap a CSS-pixel coordinate to a whole device pixel. */
@@ -87,7 +141,9 @@ export function drawFrame(
   const f = FRAMES[key];
   if (!f || !atlas) return false;
 
-  const { flip = false, rotation = 0, pivotY = 0, squashX = 1, squashY = 1, alpha = 1 } = opts;
+  const { flip = false, rotation = 0, pivotY = 0, squashX = 1, squashY = 1, alpha = 1, symbiote = false } = opts;
+  const src = symbiote ? getSymbioteAtlas() : atlas;
+  if (!src) return false;
   const size = CELL * SCALE;
 
   ctx.save();
@@ -106,7 +162,7 @@ export function drawFrame(
   if (flip) ctx.scale(-1, 1);
 
   ctx.drawImage(
-    atlas,
+    src,
     f.x, f.y, CELL, CELL,
     -ANCHOR_X * SCALE, -ANCHOR_Y * SCALE, size, size,
   );

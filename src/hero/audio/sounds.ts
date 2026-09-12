@@ -59,4 +59,10 @@ export class Sounds {
   boing(): void { this.osc('triangle', 280, 560, 0.12, 0.16); }
   step(alt: boolean): void { this.osc('square', alt ? 190 : 160, alt ? 150 : 128, 0.045, 0.045); }
   pop(): void { this.osc('square', 720, 920, 0.06, 0.1); }
+  /** a single punch landing — short noise crack, no ring */
+  punch(): void { this.noise(0.06, 2600, 0.2, 700); }
+  /** the KO beat — a heavy low thud plus a falling power-sting on top */
+  ko(): void { this.thud(1700); this.osc('sawtooth', 90, 28, 0.35, 0.16); }
+  /** symbiote take-over — a rising growl */
+  surge(): void { this.noise(0.32, 480, 0.16, 90); this.osc('sawtooth', 60, 220, 0.28, 0.12); }
 }

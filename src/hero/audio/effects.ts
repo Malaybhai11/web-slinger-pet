@@ -19,4 +19,7 @@ export class Sfx {
     this.sounds.step(this.stepAlt);
   }
   bounce(): void { this.sounds.pop(); }
+  punch(): void { this.sounds.punch(); }
+  ko(): void { this.sounds.ko(); }
+  surge(): void { this.sounds.surge(); }
 }

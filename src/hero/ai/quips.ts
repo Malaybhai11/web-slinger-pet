@@ -12,7 +12,9 @@ export type Trigger =
   | 'greet' | 'land-button' | 'land-heading' | 'land-link' | 'land-input'
   | 'perch' | 'idle-long' | 'bored' | 'fast-scroll' | 'miss' | 'big-fall'
   | 'swing-start' | 'stuck' | 'clicked-near' | 'press' | 'flip'
-  | 'phone-check' | 'shadow-box' | 'mimic-web';
+  | 'phone-check' | 'shadow-box' | 'mimic-web'
+  | 'villain-spot' | 'villain-taunt' | 'villain-ko'
+  | 'symbiote-on' | 'symbiote-off';
 
 export interface QuipContext {
   /** trimmed text of the element he's involved with, if any */
@@ -133,6 +135,43 @@ const POOLS: Record<Trigger, string[]> = {
     'imaginary bad guy, real good aim',
     'reload noise goes here',
     'still got it',
+  ],
+  'villain-spot': [
+    "oh, it's you again",
+    'seriously? right now?',
+    'buddy, i just sat down',
+    'and here i thought it was a quiet page',
+    'the audacity of showing up in someone else\'s CSS',
+  ],
+  'villain-taunt': [
+    'come on then',
+    "that's the best you've got?",
+    'i really did not miss this part',
+    'tell doc ock i said hi. after this.',
+    'okay, okay, footwork',
+    'this is coming out of your severance',
+  ],
+  'villain-ko': [
+    'and STAY down',
+    'ten out of ten, no notes',
+    'that never gets old',
+    'somebody get this guy a nap',
+    'webslinger: one. bad decisions: zero',
+    'back to the DOM you crawled out of',
+  ],
+  'symbiote-on': [
+    'okay, who let this thing out',
+    'this is a whole mood',
+    'the suit has OPINIONS right now',
+    'ask me again in ten seconds',
+    'we are NOT telling aunt may about this one',
+  ],
+  'symbiote-off': [
+    'aaand we\'re back',
+    'that was a lot, huh',
+    'the suit says sorry. i say nothing.',
+    'normal service resumed',
+    'okay that was a little fun ngl',
   ],
 };
 

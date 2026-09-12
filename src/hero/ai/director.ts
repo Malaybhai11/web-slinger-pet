@@ -80,6 +80,8 @@ export class Director {
   private lastGround: Surface | null = null;
   /** hard off switch — used by QA to make manual-control tests deterministic */
   private enabled = true;
+  /** true for the duration of a villain encounter — he stops wandering off mid-fight */
+  private encounterHold = false;
 
   constructor(private host: DirectorHost) {}
 
@@ -104,9 +106,16 @@ export class Director {
     return this.goal?.id ?? null;
   }
 
+  /** Held for the duration of a villain encounter (render/villain.ts). */
+  setEncounterHold(active: boolean): void {
+    this.encounterHold = active;
+    if (active) { this.clearInput(); this.goal = null; this.jumpQueued = false; }
+  }
+
   step(dt: number): void {
     const { hero, needs } = this.host;
     if (!this.enabled) { this.clearInput(); return; }
+    if (this.encounterHold) { this.clearInput(); return; }
 
     if (this.manualFor > 0) {
       this.manualFor -= dt;

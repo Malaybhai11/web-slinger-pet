@@ -1,6 +1,7 @@
 /**
  * renderer.ts — one full-viewport canvas above the page, drawing in order:
- * shadow → web line → aim dots → particles → hero → speech bubble.
+ * shadow → web line → aim dots → particles → villain → hero → speech bubble
+ * → KO flash overlay.
  *
  * Page coordinates convert to viewport with `viewportY = pageY - scrollY`.
  *
@@ -18,6 +19,7 @@ import { NEUTRAL } from '../animation/pose.js';
 import { drawWebLine, drawMiss, drawAim } from './web-line.js';
 import { drawShadow } from './shadow.js';
 import type { Bubble } from './bubble.js';
+import type { Villain } from './villain.js';
 import type { Hero } from '../character/state.js';
 import type { WebShooter } from '../character/web-shoot.js';
 import { topPage, type SurfaceMap } from '../world/surfaces.js';
@@ -29,6 +31,8 @@ export class Renderer {
   shadowEnabled = true;
   shakeX = 0;
   shakeY = 0;
+  /** 0..1, drawn as a full-viewport white overlay — the villain KO beat */
+  flash = 0;
 
   constructor() {
     this.canvas = document.createElement('canvas');
@@ -58,7 +62,10 @@ export class Renderer {
     particles: Particles,
     map: SurfaceMap,
     timeMs: number,
-    opts: { pose?: Pose; bubble?: Bubble; drawX?: number; drawY?: number } = {},
+    opts: {
+      pose?: Pose; bubble?: Bubble; drawX?: number; drawY?: number;
+      symbiote?: boolean; villain?: Villain;
+    } = {},
   ): void {
     const { ctx } = this;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -92,6 +99,9 @@ export class Renderer {
 
     particles.draw(ctx, sy);
 
+    // the villain, if one is currently in the middle of an encounter
+    opts.villain?.draw(ctx, sy, this.shakeX, this.shakeY);
+
     const pose = opts.pose ?? NEUTRAL;
     drawFrame(ctx, animator.frame(), hx, hy - sy + this.shakeY, {
       flip: animator.flip(),
@@ -99,9 +109,19 @@ export class Renderer {
       pivotY: pose.pivotY,
       squashX: pose.squashX,
       squashY: pose.squashY,
+      symbiote: opts.symbiote,
     });
 
-    // the bubble sits above his head and is the last thing drawn
+    // the bubble sits above his head, drawn after him
     opts.bubble?.draw(ctx, hx, hy - sy - hero.height - 34);
+
+    // the KO flash, if any — a full-viewport overlay, last thing drawn
+    if (this.flash > 0.001) {
+      ctx.save();
+      ctx.globalAlpha = this.flash;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+      ctx.restore();
+    }
   }
 }
